@@ -15,6 +15,12 @@ import NewClientPage from "./pages/clients/new";
 import ClientDetailsPage from "./pages/clients/[id]";
 import EditClientPage from "./pages/clients/[id]/edit";
 
+// Receipt routes
+import ReceiptsPage from "./pages/receipts";
+import NewReceiptPage from "./pages/receipts/new";
+import ReceiptDetailsPage from "./pages/receipts/[id]";
+import EditReceiptPage from "./pages/receipts/[id]/edit";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -34,9 +40,14 @@ const App = () => (
             <Route path="clients/:id" element={<ClientDetailsPage />} />
             <Route path="clients/:id/edit" element={<EditClientPage />} />
             
-            <Route path="receipts" element={<div className="p-6">Receipts Page Coming Soon</div>} />
+            {/* Receipt Routes */}
+            <Route path="receipts" element={<ReceiptsPage />} />
+            <Route path="receipts/new" element={<NewReceiptPage />} />
+            <Route path="receipts/:id" element={<ReceiptDetailsPage />} />
+            <Route path="receipts/:id/edit" element={<EditReceiptPage />} />
+            
+            {/* Future Routes */}
             <Route path="receipts/admin" element={<div className="p-6">Admin Receipts Page Coming Soon</div>} />
-            <Route path="receipts/new" element={<div className="p-6">New Receipt Page Coming Soon</div>} />
             <Route path="reports" element={<div className="p-6">Reports Page Coming Soon</div>} />
             <Route path="settings" element={<div className="p-6">Settings Page Coming Soon</div>} />
           </Route>

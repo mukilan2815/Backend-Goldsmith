@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, FileText, Edit, Trash } from "lucide-react";
+import { Plus, Search, FileText, Edit, Trash, Receipt } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -99,6 +100,11 @@ export default function ClientsPage() {
     setClientToDelete(null);
   };
 
+  // New function to create receipt for a client
+  const handleCreateReceipt = (client) => {
+    navigate("/receipts/new", { state: { client } });
+  };
+
   return (
     <div className="container py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
@@ -162,6 +168,14 @@ export default function ClientsPage() {
                           title="Edit Client"
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleCreateReceipt(client)}
+                          title="Create Receipt"
+                        >
+                          <Receipt className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
