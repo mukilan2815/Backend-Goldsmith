@@ -1,13 +1,12 @@
 
-"use client";
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -17,35 +16,38 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Loader } from "lucide-react";
 
-// Define the form validation schema
+// Define the form schema with Zod
 const clientFormSchema = z.object({
   shopName: z.string().min(1, { message: "Shop name is required" }),
   clientName: z.string().min(1, { message: "Client name is required" }),
   phoneNumber: z
     .string()
     .min(1, { message: "Phone number is required" })
-    .regex(/^\+?[0-9\s\-()]+$/, { 
-      message: "Please enter a valid phone number" 
+    .regex(/^\d{3}-\d{3}-\d{4}$/, {
+      message: "Phone must be in format: 123-456-7890",
     }),
-  address: z.string().optional(),
+  address: z.string().min(1, { message: "Address is required" }),
 });
 
 type ClientFormValues = z.infer<typeof clientFormSchema>;
 
-export function ClientForm() {
-  const { toast } = useToast();
+interface ClientFormProps {
+  defaultValues?: ClientFormValues;
+  clientId?: string;
+}
+
+export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Initialize the form with default values
+  const isEditing = !!clientId;
+
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
-    defaultValues: {
+    defaultValues: defaultValues || {
       shopName: "",
       clientName: "",
       phoneNumber: "",
@@ -53,48 +55,35 @@ export function ClientForm() {
     },
   });
 
-  // Handle form submission
   const onSubmit = async (data: ClientFormValues) => {
     setIsSubmitting(true);
     
     try {
-      // In a real app, this would be an API call to save the client
-      // For now, we'll simulate the API call with a timeout
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Success notification
       toast({
-        title: "Client added successfully!",
-        description: "New client has been registered.",
+        title: isEditing ? "Client Updated" : "Client Added",
+        description: `${data.clientName} has been successfully ${isEditing ? "updated" : "added"}.`,
       });
       
-      // Reset form
-      form.reset();
-      
-      // Redirect to clients list
+      // Navigate back to clients list
       navigate("/clients");
     } catch (error) {
-      // Error notification
       toast({
-        title: "Failed to add client",
-        description: "There was a problem adding the client. Please try again.",
         variant: "destructive",
+        title: "Error",
+        description: "Something went wrong. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle cancel button click
-  const handleCancel = () => {
-    form.reset();
-    navigate("/clients");
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
             name="shopName"
@@ -108,7 +97,6 @@ export function ClientForm() {
               </FormItem>
             )}
           />
-          
           <FormField
             control={form.control}
             name="clientName"
@@ -122,51 +110,51 @@ export function ClientForm() {
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="Format: 123-456-7890" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="md:col-span-2">
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter complete address"
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="phoneNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone Number</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter phone number" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Address</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Enter client address (optional)" 
-                  className="resize-none" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <div className="flex justify-end gap-4">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={handleCancel}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/clients")}
           >
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Client
+            {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+            {isEditing ? "Update Client" : "Save Client"}
           </Button>
         </div>
       </form>

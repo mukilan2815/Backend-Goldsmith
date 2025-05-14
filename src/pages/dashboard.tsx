@@ -1,210 +1,144 @@
 
-import { ArrowUp, Users, FileText, ShoppingBag, LineChart, Clock, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+  Users,
+  FileSpreadsheet,
+  Weight,
+  FileText,
+  Calendar,
+} from "lucide-react";
+import { StatCard } from "@/components/dashboard/stat-card";
+import {
+  ReceiptsTrendChart,
+  MetalTypeTrendChart,
+  WeightProcessedChart,
+} from "@/components/dashboard/overview-chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  
+  const [dateRange, setDateRange] = useState("this-month");
+
   return (
     <div className="container py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
           <h1 className="text-3xl font-serif font-bold">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome to GoldCraft Business Management
+            Overview of your goldsmith business
           </p>
         </div>
-        <div className="space-x-2 mt-4 md:mt-0">
-          <Button onClick={() => navigate("/clients/new")}>
-            <Plus className="mr-2 h-4 w-4" /> Add Client
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/clients")}>
-            <Users className="mr-2 h-4 w-4" /> View Clients
-          </Button>
+        <div className="mt-4 md:mt-0">
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select date range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="this-week">This Week</SelectItem>
+              <SelectItem value="this-month">This Month</SelectItem>
+              <SelectItem value="this-year">This Year</SelectItem>
+              <SelectItem value="all-time">All Time</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">
-              +1 from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Receipts</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">28</div>
-            <p className="text-xs text-muted-foreground">
-              +8 from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gold Transacted</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">358.2g</div>
-            <p className="text-xs text-muted-foreground">
-              +42.5g from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Transaction</CardTitle>
-            <LineChart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12.8g</div>
-            <p className="text-xs text-muted-foreground">
-              <ArrowUp className="h-3 w-3 inline mr-1" />
-              +2.1% from last month
-            </p>
-          </CardContent>
-        </Card>
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard
+          title="Total Clients"
+          value="124"
+          description="Active clients"
+          icon={<Users className="h-4 w-4" />}
+          trend={{ value: 12, isPositive: true }}
+        />
+        <StatCard
+          title="Total Receipts"
+          value="348"
+          description="All receipts"
+          icon={<FileText className="h-4 w-4" />}
+          trend={{ value: 8, isPositive: true }}
+        />
+        <StatCard
+          title="Admin Receipts"
+          value="156"
+          description="Special receipts"
+          icon={<FileSpreadsheet className="h-4 w-4" />}
+          trend={{ value: 5, isPositive: true }}
+        />
+        <StatCard
+          title="Total Weight"
+          value="1,450 g"
+          description="Gold processed"
+          icon={<Weight className="h-4 w-4" />}
+          trend={{ value: 3, isPositive: false }}
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 mb-8">
-        <Card className="overflow-hidden card-premium">
-          <CardHeader>
-            <CardTitle>Recent Clients</CardTitle>
-            <CardDescription>
-              Newly added clients in the past 30 days
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="mr-4 bg-muted h-9 w-9 rounded-full flex items-center justify-center">
-                  <Users className="h-4 w-4" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    Michael Brown - Gem Masters
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Added May 10, 2024
-                  </p>
-                </div>
-                <div className="ml-auto">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate("/clients/3")}
-                  >
-                    View
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="mr-4 bg-muted h-9 w-9 rounded-full flex items-center justify-center">
-                  <Users className="h-4 w-4" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    Sarah Johnson - Silver Linings
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Added May 1, 2024
-                  </p>
-                </div>
-                <div className="ml-auto">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate("/clients/2")}
-                  >
-                    View
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <ReceiptsTrendChart />
+        <MetalTypeTrendChart />
+      </div>
 
-        <Card className="overflow-hidden card-premium">
-          <CardHeader>
-            <CardTitle>Recent Activities</CardTitle>
-            <CardDescription>
-              Latest transactions and client interactions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="mr-4 bg-muted h-9 w-9 rounded-full flex items-center justify-center">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    New Receipt Created
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    John Smith - Gold Chain (18.7g)
-                  </p>
-                </div>
-                <div className="ml-auto flex items-center">
-                  <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Today</span>
-                </div>
+      <div className="mb-8">
+        <WeightProcessedChart />
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-card card-premium rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-serif font-medium">Recent Activity</h2>
+          <Select defaultValue="all">
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="receipts">Receipts</SelectItem>
+              <SelectItem value="clients">Clients</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-4">
+          {/* Activity Item */}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 p-3 rounded-md hover:bg-accent/50 transition-colors"
+            >
+              <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
+                {i % 2 === 0 ? (
+                  <FileText className="h-5 w-5 text-gold" />
+                ) : (
+                  <Users className="h-5 w-5 text-gold" />
+                )}
               </div>
-              <div className="flex items-center">
-                <div className="mr-4 bg-muted h-9 w-9 rounded-full flex items-center justify-center">
-                  <Users className="h-4 w-4" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    New Client Added
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Michael Brown - Gem Masters
-                  </p>
-                </div>
-                <div className="ml-auto flex items-center">
-                  <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Yesterday</span>
-                </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {i % 2 === 0
+                    ? `New receipt created for Client #${i * 10}`
+                    : `New client added: Client #${i * 10}`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {i % 2 === 0 ? "Receipt #1234" : "By Admin"}
+                </p>
               </div>
-              <div className="flex items-center">
-                <div className="mr-4 bg-muted h-9 w-9 rounded-full flex items-center justify-center">
-                  <FileText className="h-4 w-4" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    Admin Receipt Created
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Sarah Johnson - Old Gold Exchange
-                  </p>
-                </div>
-                <div className="ml-auto flex items-center">
-                  <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">2 days ago</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Today</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
