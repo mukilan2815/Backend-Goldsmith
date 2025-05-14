@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useRouter } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,7 +50,7 @@ const initialClients = [
 ];
 
 export default function ClientsPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [clients, setClients] = useState(initialClients);
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,15 +68,15 @@ export default function ClientsPage() {
   });
 
   const handleAddClient = () => {
-    router.push("/clients/new");
+    navigate("/clients/new");
   };
 
   const handleEditClient = (id: string) => {
-    router.push(`/clients/${id}/edit`);
+    navigate(`/clients/${id}/edit`);
   };
 
   const handleViewDetails = (id: string) => {
-    router.push(`/clients/${id}`);
+    navigate(`/clients/${id}`);
   };
 
   const openDeleteDialog = (id: string) => {
