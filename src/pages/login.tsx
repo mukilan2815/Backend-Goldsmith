@@ -64,7 +64,10 @@ export default function Login() {
                     className="text-gold hover:text-gold-dark underline underline-offset-4"
                     onClick={(e) => {
                       e.preventDefault();
-                      document.querySelector('[data-value="signup"]')?.click();
+                      const element = document.querySelector('[data-value="signup"]');
+                      if (element instanceof HTMLElement) {
+                        element.click();
+                      }
                     }}
                   >
                     Sign up
@@ -80,7 +83,10 @@ export default function Login() {
                     className="text-gold hover:text-gold-dark underline underline-offset-4"
                     onClick={(e) => {
                       e.preventDefault();
-                      document.querySelector('[data-value="login"]')?.click();
+                      const element = document.querySelector('[data-value="login"]');
+                      if (element instanceof HTMLElement) {
+                        element.click();
+                      }
                     }}
                   >
                     Sign in
