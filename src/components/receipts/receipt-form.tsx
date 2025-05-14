@@ -37,6 +37,7 @@ const receiptFormSchema = z.object({
   shopName: z.string().min(1, { message: "Shop name is required" }),
   mobile: z.string().min(1, { message: "Mobile number is required" }),
   address: z.string().optional(),
+  metalType: z.string().min(1, { message: "Metal type is required" }),
   items: z.array(receiptItemSchema).min(1, { message: "Add at least one item" }).refine(
     (items) => {
       return items.every((item) => item.stoneWeight <= item.grossWeight);
@@ -66,6 +67,8 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [voucherId, setVoucherId] = useState(`RC-${Math.floor(100000 + Math.random() * 900000)}`); // Generate random voucher ID
+  const [metalType, setMetalType] = useState("Gold");
   const [items, setItems] = useState<ReceiptItem[]>([
     {
       id: uuidv4(),
@@ -86,6 +89,7 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
     shopName: client?.shopName || "",
     mobile: client?.phoneNumber || "",
     address: client?.address || "",
+    metalType: metalType,
     items: items,
   };
 
@@ -192,34 +196,52 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
       // Prepare receipt data with calculated values
       const receiptData = {
         id: receiptId || uuidv4(),
-        client: {
-          id: client?.id || uuidv4(),
+        voucherId: voucherId,
+        clientId: client?.id || uuidv4(),
+        clientInfo: {
           name: formData.clientName,
           shopName: formData.shopName,
-          mobile: formData.mobile,
+          phoneNumber: formData.mobile,
           address: formData.address || "",
         },
+        metalType: formData.metalType || metalType,
         items: items.map((item) => ({
-          ...item,
+          itemName: item.description,
+          tag: "",  // Optional tag field
+          grossWt: item.grossWeight,
+          stoneWt: item.stoneWeight,
+          meltingTouch: item.meltingPercent,
+          stoneAmt: 0, // Default to 0 for now
+          netWt: item.netWeight,
+          finalWt: item.finalWeight,
         })),
-        totalGrossWeight: totals.grossWeight,
-        totalStoneWeight: totals.stoneWeight,
-        totalNetWeight: totals.netWeight,
-        totalFinalWeight: totals.finalWeight,
-        totalAmount: totals.amount,
+        totals: {
+          grossWt: totals.grossWeight,
+          stoneWt: totals.stoneWeight,
+          netWt: totals.netWeight,
+          finalWt: totals.finalWeight,
+          stoneAmt: 0, // Default to 0 for now
+        },
+        issueDate: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       // In a real app, this would call an API endpoint
-      // await fetch('/api/receipts', { method: 'POST', body: JSON.stringify(receiptData) })
+      // await fetch('/api/receipts', { 
+      //   method: 'POST', 
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify(receiptData) 
+      // });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast({
         title: receiptId ? "Receipt Updated" : "Receipt Created",
-        description: `Receipt ${receiptId ? "updated" : "created"} successfully.`,
+        description: `Receipt ${voucherId} ${receiptId ? "updated" : "created"} successfully.`,
       });
       
       // Navigate back to receipts page
@@ -247,6 +269,33 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Voucher ID */}
+        <div className="bg-background/50 p-6 rounded-md border">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Receipt Details</h3>
+            <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-medium">
+              Voucher ID: {voucherId}
+            </div>
+          </div>
+
+          {/* Metal Type */}
+          <div className="mb-6">
+            <FormLabel>Metal Type</FormLabel>
+            <div className="flex gap-2">
+              {["Gold", "Silver", "Platinum"].map((type) => (
+                <Button
+                  key={type}
+                  type="button"
+                  variant={metalType === type ? "default" : "outline"}
+                  onClick={() => setMetalType(type)}
+                >
+                  {type}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Client Information */}
         <div className="bg-background/50 p-6 rounded-md border">
           <h3 className="text-lg font-medium mb-4">Client Information</h3>

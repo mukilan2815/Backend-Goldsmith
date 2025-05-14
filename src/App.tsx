@@ -10,7 +10,7 @@ import NotFound from "./pages/NotFound";
 import DashboardLayout from "./layouts/dashboard-layout";
 
 // Client routes
-import ClientsPage from "./pages/clients";
+import CustomerDetailsPage from "./pages/clients";
 import NewClientPage from "./pages/clients/new";
 import ClientDetailsPage from "./pages/clients/[id]";
 import EditClientPage from "./pages/clients/[id]/edit";
@@ -20,6 +20,7 @@ import ReceiptsPage from "./pages/receipts";
 import NewReceiptPage from "./pages/receipts/new";
 import ReceiptDetailsPage from "./pages/receipts/[id]";
 import EditReceiptPage from "./pages/receipts/[id]/edit";
+import ClientSelectionPage from "./pages/receipts/select-client";
 
 const queryClient = new QueryClient();
 
@@ -35,13 +36,14 @@ const App = () => (
             <Route index element={<Dashboard />} />
             
             {/* Client Routes */}
-            <Route path="clients" element={<ClientsPage />} />
+            <Route path="clients" element={<CustomerDetailsPage />} />
             <Route path="clients/new" element={<NewClientPage />} />
             <Route path="clients/:id" element={<ClientDetailsPage />} />
             <Route path="clients/:id/edit" element={<EditClientPage />} />
             
             {/* Receipt Routes */}
             <Route path="receipts" element={<ReceiptsPage />} />
+            <Route path="receipts/select-client" element={<ClientSelectionPage />} />
             <Route path="receipts/new" element={<NewReceiptPage />} />
             <Route path="receipts/:id" element={<ReceiptDetailsPage />} />
             <Route path="receipts/:id/edit" element={<EditReceiptPage />} />

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, FileText, Edit, Trash, Receipt } from "lucide-react";
+import { Search, FileText, Edit, Trash, Receipt } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -50,7 +50,7 @@ const initialClients = [
   },
 ];
 
-export default function ClientsPage() {
+export default function CustomerDetailsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [clients, setClients] = useState(initialClients);
@@ -67,10 +67,6 @@ export default function ClientsPage() {
       client.phoneNumber.includes(searchTerm)
     );
   });
-
-  const handleAddClient = () => {
-    navigate("/clients/new");
-  };
 
   const handleEditClient = (id: string) => {
     navigate(`/clients/${id}/edit`);
@@ -109,14 +105,11 @@ export default function ClientsPage() {
     <div className="container py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
-          <h1 className="text-3xl font-serif font-bold">Clients</h1>
+          <h1 className="text-3xl font-serif font-bold">Customer Details</h1>
           <p className="text-muted-foreground">
             Manage your goldsmith business clients
           </p>
         </div>
-        <Button onClick={handleAddClient} className="mt-4 md:mt-0">
-          <Plus className="mr-2 h-4 w-4" /> Add Client
-        </Button>
       </div>
 
       <div className="bg-card card-premium rounded-lg p-6 mb-8">
