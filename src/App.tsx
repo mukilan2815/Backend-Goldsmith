@@ -9,6 +9,12 @@ import Dashboard from "./pages/dashboard";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./layouts/dashboard-layout";
 
+// Client routes
+import ClientsPage from "./pages/clients";
+import NewClientPage from "./pages/clients/new";
+import ClientDetailsPage from "./pages/clients/[id]";
+import EditClientPage from "./pages/clients/[id]/edit";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -21,8 +27,13 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="clients" element={<div className="p-6">Clients Page Coming Soon</div>} />
-            <Route path="clients/new" element={<div className="p-6">New Client Page Coming Soon</div>} />
+            
+            {/* Client Routes */}
+            <Route path="clients" element={<ClientsPage />} />
+            <Route path="clients/new" element={<NewClientPage />} />
+            <Route path="clients/:id" element={<ClientDetailsPage />} />
+            <Route path="clients/:id/edit" element={<EditClientPage />} />
+            
             <Route path="receipts" element={<div className="p-6">Receipts Page Coming Soon</div>} />
             <Route path="receipts/admin" element={<div className="p-6">Admin Receipts Page Coming Soon</div>} />
             <Route path="receipts/new" element={<div className="p-6">New Receipt Page Coming Soon</div>} />
