@@ -8,6 +8,7 @@ import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./layouts/dashboard-layout";
+import { DataProvider } from "./contexts/DataContext";
 
 // Client routes
 import CustomerDetailsPage from "./pages/clients";
@@ -26,37 +27,39 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<Dashboard />} />
-            
-            {/* Client Routes */}
-            <Route path="clients" element={<CustomerDetailsPage />} />
-            <Route path="clients/new" element={<NewClientPage />} />
-            <Route path="clients/:id" element={<ClientDetailsPage />} />
-            <Route path="clients/:id/edit" element={<EditClientPage />} />
-            
-            {/* Receipt Routes */}
-            <Route path="receipts" element={<ReceiptsPage />} />
-            <Route path="receipts/select-client" element={<ClientSelectionPage />} />
-            <Route path="receipts/new" element={<NewReceiptPage />} />
-            <Route path="receipts/:id" element={<ReceiptDetailsPage />} />
-            <Route path="receipts/:id/edit" element={<EditReceiptPage />} />
-            
-            {/* Future Routes */}
-            <Route path="receipts/admin" element={<div className="p-6">Admin Receipts Page Coming Soon</div>} />
-            <Route path="reports" element={<div className="p-6">Reports Page Coming Soon</div>} />
-            <Route path="settings" element={<div className="p-6">Settings Page Coming Soon</div>} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <DataProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<DashboardLayout />}>
+              <Route index element={<Dashboard />} />
+              
+              {/* Client Routes */}
+              <Route path="clients" element={<CustomerDetailsPage />} />
+              <Route path="clients/new" element={<NewClientPage />} />
+              <Route path="clients/:id" element={<ClientDetailsPage />} />
+              <Route path="clients/:id/edit" element={<EditClientPage />} />
+              
+              {/* Receipt Routes */}
+              <Route path="receipts" element={<ReceiptsPage />} />
+              <Route path="receipts/select-client" element={<ClientSelectionPage />} />
+              <Route path="receipts/new" element={<NewReceiptPage />} />
+              <Route path="receipts/:id" element={<ReceiptDetailsPage />} />
+              <Route path="receipts/:id/edit" element={<EditReceiptPage />} />
+              
+              {/* Future Routes */}
+              <Route path="receipts/admin" element={<div className="p-6">Admin Receipts Page Coming Soon</div>} />
+              <Route path="reports" element={<div className="p-6">Reports Page Coming Soon</div>} />
+              <Route path="settings" element={<div className="p-6">Settings Page Coming Soon</div>} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </DataProvider>
   </QueryClientProvider>
 );
 
