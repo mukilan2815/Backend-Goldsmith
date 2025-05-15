@@ -1,9 +1,9 @@
+
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Users,
   FileSpreadsheet,
-  BarChart3,
   Settings,
   FilePlus,
   User,
@@ -19,7 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  children?: React.ReactNode; // Add children to the props
+  children?: React.ReactNode;
 }
 
 interface SidebarItemProps {
@@ -118,7 +118,7 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 z-50 w-64 border-r bg-background transition-transform duration-300 ease-in-out",
+          "fixed top-0 bottom-0 left-0 z-40 w-64 border-r bg-background transition-transform duration-300 ease-in-out",
           isMobile ? (isOpen ? "translate-x-0" : "-translate-x-full") : "translate-x-0"
         )}
       >
@@ -142,61 +142,6 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
               icon={<Home className="h-4 w-4" />}
               title="Dashboard"
               isActive={location.pathname === "/"}
-            />
-            
-            <SidebarItem
-              href="/clients"
-              icon={<Users className="h-4 w-4" />}
-              title="Clients"
-              isActive={location.pathname.startsWith("/clients")}
-              hasSubmenu
-            >
-              <SidebarItem
-                href="/clients"
-                icon={<User className="h-4 w-4" />}
-                title="Client List"
-                isActive={location.pathname === "/clients"}
-              />
-              <SidebarItem
-                href="/clients/new"
-                icon={<FilePlus className="h-4 w-4" />}
-                title="Add Client"
-                isActive={location.pathname === "/clients/new"}
-              />
-            </SidebarItem>
-            
-            <SidebarItem
-              href="/receipts"
-              icon={<FileSpreadsheet className="h-4 w-4" />}
-              title="Receipts"
-              isActive={location.pathname.startsWith("/receipts")}
-              hasSubmenu
-            >
-              <SidebarItem
-                href="/receipts"
-                icon={<FileSpreadsheet className="h-4 w-4" />}
-                title="Regular Receipts"
-                isActive={location.pathname === "/receipts"}
-              />
-              <SidebarItem
-                href="/receipts/admin"
-                icon={<FileSpreadsheet className="h-4 w-4" />}
-                title="Admin Receipts"
-                isActive={location.pathname === "/receipts/admin"}
-              />
-              <SidebarItem
-                href="/receipts/new"
-                icon={<FilePlus className="h-4 w-4" />}
-                title="New Receipt"
-                isActive={location.pathname === "/receipts/new"}
-              />
-            </SidebarItem>
-            
-            <SidebarItem
-              href="/reports"
-              icon={<BarChart3 className="h-4 w-4" />}
-              title="Reports"
-              isActive={location.pathname === "/reports"}
             />
             
             <Separator className="my-2" />

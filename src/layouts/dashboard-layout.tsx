@@ -15,7 +15,7 @@ export default function DashboardLayout() {
         >
           <QuickLinks />
         </Sidebar>
-        <div className="flex flex-1 flex-col min-h-screen max-h-screen overflow-y-auto">
+        <div className="flex flex-1 flex-col min-h-screen max-h-screen overflow-y-auto ml-64">
           <Navbar onMenuClick={() => {}} />
           <main className="flex-1 pb-8">
             <Outlet />

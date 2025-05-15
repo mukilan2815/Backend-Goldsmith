@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { Plus, FileText, BarChart3, Users, ShieldCheck } from "lucide-react";
+import { Plus, FileText, BarChart3, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuickLinkProps {
@@ -54,12 +54,7 @@ export const QuickLinks = () => {
           label="Admin Bill"
           to="/admin-bills"
         />
-        <QuickLinkItem
-          icon={<Users className="h-4 w-4" />}
-          label="Customer Details"
-          to="/clients"
-        />
       </div>
     </div>
   );
-};
+}
