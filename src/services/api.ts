@@ -59,6 +59,12 @@ export const clientServices = {
   deleteClient: async (id: string) => {
     const response = await api.delete(`/clients/${id}`);
     return response.data;
+  },
+  
+  // Search clients
+  searchClients: async (query: string) => {
+    const response = await api.get(`/clients/search?query=${query}`);
+    return response.data;
   }
 };
 
@@ -104,6 +110,12 @@ export const receiptServices = {
   generateVoucherId: async () => {
     const response = await api.get('/receipts/generate-voucher-id');
     return response.data;
+  },
+  
+  // Search receipts
+  searchReceipts: async (query: string) => {
+    const response = await api.get(`/receipts/search?query=${query}`);
+    return response.data;
   }
 };
 
@@ -125,11 +137,85 @@ export const analyticsServices = {
   getMetalTypeDistribution: async () => {
     const response = await api.get('/analytics/metal-types');
     return response.data;
+  },
+  
+  // Get yearly comparison data
+  getYearlyComparison: async () => {
+    const response = await api.get('/analytics/yearly-comparison');
+    return response.data;
+  }
+};
+
+// Admin receipt services
+export const adminReceiptServices = {
+  // Get all admin receipts
+  getAdminReceipts: async () => {
+    const response = await api.get('/admin-receipts');
+    return response.data;
+  },
+  
+  // Get admin receipt by ID
+  getAdminReceipt: async (id: string) => {
+    const response = await api.get(`/admin-receipts/${id}`);
+    return response.data;
+  },
+  
+  // Create new admin receipt
+  createAdminReceipt: async (receiptData: any) => {
+    const response = await api.post('/admin-receipts', receiptData);
+    return response.data;
+  },
+  
+  // Update admin receipt
+  updateAdminReceipt: async (id: string, receiptData: any) => {
+    const response = await api.put(`/admin-receipts/${id}`, receiptData);
+    return response.data;
+  },
+  
+  // Delete admin receipt
+  deleteAdminReceipt: async (id: string) => {
+    const response = await api.delete(`/admin-receipts/${id}`);
+    return response.data;
+  }
+};
+
+// Admin bill services
+export const adminBillServices = {
+  // Get all admin bills
+  getAdminBills: async () => {
+    const response = await api.get('/admin-bills');
+    return response.data;
+  },
+  
+  // Get admin bill by ID
+  getAdminBill: async (id: string) => {
+    const response = await api.get(`/admin-bills/${id}`);
+    return response.data;
+  },
+  
+  // Create new admin bill
+  createAdminBill: async (billData: any) => {
+    const response = await api.post('/admin-bills', billData);
+    return response.data;
+  },
+  
+  // Update admin bill
+  updateAdminBill: async (id: string, billData: any) => {
+    const response = await api.put(`/admin-bills/${id}`, billData);
+    return response.data;
+  },
+  
+  // Delete admin bill
+  deleteAdminBill: async (id: string) => {
+    const response = await api.delete(`/admin-bills/${id}`);
+    return response.data;
   }
 };
 
 export default {
   clientServices,
   receiptServices,
-  analyticsServices
+  analyticsServices,
+  adminReceiptServices,
+  adminBillServices
 };
