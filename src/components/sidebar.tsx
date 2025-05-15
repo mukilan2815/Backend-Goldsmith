@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -20,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  children?: React.ReactNode; // Add children to the props
 }
 
 interface SidebarItemProps {
@@ -101,7 +101,7 @@ function SidebarItem({
   );
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
 
@@ -133,6 +133,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </Link>
         </div>
         <ScrollArea className="h-[calc(100vh-4rem)]">
+          {/* This is where we add the children prop */}
+          {children}
+          
           <div className="px-3 py-2 space-y-1">
             <SidebarItem
               href="/"
