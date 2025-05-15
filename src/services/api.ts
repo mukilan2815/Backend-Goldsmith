@@ -1,12 +1,12 @@
 
-// API service for handling backend requests
 import axios from 'axios';
+import { toast } from '@/components/ui/use-toast';
 
 // For local development, this would point to your local server
-// For Lovable deployment, this should point to your deployed API
+// For production, this should point to your deployed API
 const API_URL = import.meta.env.PROD 
-  ? 'https://your-api-url.com/api'  // Replace with your deployed API URL
-  : 'http://localhost:5000/api';    // Local development server
+  ? 'https://your-deployed-api.com/api'  // Replace with your deployed API URL
+  : 'http://localhost:5000/api';         // Local development server
 
 const api = axios.create({
   baseURL: API_URL,
@@ -15,61 +15,50 @@ const api = axios.create({
   },
 });
 
+// Add interceptors for better error handling and loading states
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.message || 'An unexpected error occurred';
+    toast({
+      title: 'Error',
+      description: message,
+      variant: 'destructive',
+    });
+    return Promise.reject(error);
+  }
+);
+
 // Client services
 export const clientServices = {
   // Get all clients
   getClients: async () => {
-    try {
-      const response = await api.get('/clients');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-      throw error;
-    }
+    const response = await api.get('/clients');
+    return response.data;
   },
   
   // Get client by ID
   getClient: async (id: string) => {
-    try {
-      const response = await api.get(`/clients/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching client ${id}:`, error);
-      throw error;
-    }
+    const response = await api.get(`/clients/${id}`);
+    return response.data;
   },
   
   // Create new client
   createClient: async (clientData: any) => {
-    try {
-      const response = await api.post('/clients', clientData);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating client:', error);
-      throw error;
-    }
+    const response = await api.post('/clients', clientData);
+    return response.data;
   },
   
   // Update client
   updateClient: async (id: string, clientData: any) => {
-    try {
-      const response = await api.put(`/clients/${id}`, clientData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating client ${id}:`, error);
-      throw error;
-    }
+    const response = await api.put(`/clients/${id}`, clientData);
+    return response.data;
   },
   
   // Delete client
   deleteClient: async (id: string) => {
-    try {
-      const response = await api.delete(`/clients/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error deleting client ${id}:`, error);
-      throw error;
-    }
+    const response = await api.delete(`/clients/${id}`);
+    return response.data;
   }
 };
 
@@ -77,83 +66,70 @@ export const clientServices = {
 export const receiptServices = {
   // Get all receipts
   getReceipts: async () => {
-    try {
-      const response = await api.get('/receipts');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching receipts:', error);
-      throw error;
-    }
+    const response = await api.get('/receipts');
+    return response.data;
   },
   
   // Get receipt by ID
   getReceipt: async (id: string) => {
-    try {
-      const response = await api.get(`/receipts/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching receipt ${id}:`, error);
-      throw error;
-    }
+    const response = await api.get(`/receipts/${id}`);
+    return response.data;
   },
   
   // Get receipts by client ID
   getClientReceipts: async (clientId: string) => {
-    try {
-      const response = await api.get(`/receipts/client/${clientId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching receipts for client ${clientId}:`, error);
-      throw error;
-    }
+    const response = await api.get(`/receipts/client/${clientId}`);
+    return response.data;
   },
   
   // Create new receipt
   createReceipt: async (receiptData: any) => {
-    try {
-      const response = await api.post('/receipts', receiptData);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating receipt:', error);
-      throw error;
-    }
+    const response = await api.post('/receipts', receiptData);
+    return response.data;
   },
   
   // Update receipt
   updateReceipt: async (id: string, receiptData: any) => {
-    try {
-      const response = await api.put(`/receipts/${id}`, receiptData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating receipt ${id}:`, error);
-      throw error;
-    }
+    const response = await api.put(`/receipts/${id}`, receiptData);
+    return response.data;
   },
   
   // Delete receipt
   deleteReceipt: async (id: string) => {
-    try {
-      const response = await api.delete(`/receipts/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error deleting receipt ${id}:`, error);
-      throw error;
-    }
+    const response = await api.delete(`/receipts/${id}`);
+    return response.data;
   },
   
   // Generate unique voucher ID
   generateVoucherId: async () => {
-    try {
-      const response = await api.get('/receipts/generate-voucher-id');
-      return response.data;
-    } catch (error) {
-      console.error('Error generating voucher ID:', error);
-      throw error;
-    }
+    const response = await api.get('/receipts/generate-voucher-id');
+    return response.data;
+  }
+};
+
+// Dashboard analytics services
+export const analyticsServices = {
+  // Get dashboard stats
+  getDashboardStats: async () => {
+    const response = await api.get('/analytics/dashboard');
+    return response.data;
+  },
+  
+  // Get sales by date range
+  getSalesByDate: async (startDate: string, endDate: string) => {
+    const response = await api.get(`/analytics/sales?startDate=${startDate}&endDate=${endDate}`);
+    return response.data;
+  },
+  
+  // Get metal type distribution
+  getMetalTypeDistribution: async () => {
+    const response = await api.get('/analytics/metal-types');
+    return response.data;
   }
 };
 
 export default {
   clientServices,
   receiptServices,
+  analyticsServices
 };

@@ -1,234 +1,254 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useEffect, useState } from "react";
 import {
-  Area,
-  AreaChart,
-  Bar,
   BarChart,
-  CartesianGrid,
-  Line,
+  Bar,
   LineChart,
-  ResponsiveContainer,
-  Tooltip,
+  Line,
   XAxis,
   YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
+import { analyticsServices } from "@/services/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader } from "lucide-react";
 
-const data = [
-  {
-    name: "Jan",
-    receipts: 5,
-    weight: 240,
-    adminReceipts: 2,
-    gold: 120,
-    silver: 80,
-    platinum: 40,
-  },
-  {
-    name: "Feb",
-    receipts: 8,
-    weight: 290,
-    adminReceipts: 3,
-    gold: 140,
-    silver: 90,
-    platinum: 60,
-  },
-  {
-    name: "Mar",
-    receipts: 12,
-    weight: 350,
-    adminReceipts: 5,
-    gold: 180,
-    silver: 100,
-    platinum: 70,
-  },
-  {
-    name: "Apr",
-    receipts: 9,
-    weight: 330,
-    adminReceipts: 4,
-    gold: 160,
-    silver: 110,
-    platinum: 60,
-  },
-  {
-    name: "May",
-    receipts: 15,
-    weight: 400,
-    adminReceipts: 6,
-    gold: 200,
-    silver: 120,
-    platinum: 80,
-  },
-  {
-    name: "Jun",
-    receipts: 18,
-    weight: 450,
-    adminReceipts: 7,
-    gold: 220,
-    silver: 140,
-    platinum: 90,
-  },
-];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#B066FE"];
 
 export function ReceiptsTrendChart() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const today = new Date();
+        const startDate = new Date();
+        startDate.setMonth(today.getMonth() - 5);
+        startDate.setDate(1);
+        
+        const response = await analyticsServices.getSalesByDate(
+          startDate.toISOString().split('T')[0],
+          today.toISOString().split('T')[0]
+        );
+        
+        const processedData = processMonthlyData(response);
+        setData(processedData);
+      } catch (error) {
+        console.error("Error fetching receipt trends:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const processMonthlyData = (rawData) => {
+    // Group by month
+    const monthlyData = {};
+    
+    rawData.forEach(item => {
+      const date = new Date(item.date);
+      const monthYear = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+      
+      if (!monthlyData[monthYear]) {
+        monthlyData[monthYear] = {
+          name: monthYear,
+          receipts: 0,
+          weight: 0
+        };
+      }
+      
+      monthlyData[monthYear].receipts += item.count;
+      monthlyData[monthYear].weight += item.totalWeight;
+    });
+    
+    return Object.values(monthlyData);
+  };
+
   return (
-    <Card className="card-premium">
-      <CardHeader>
-        <CardTitle>Receipts Trend</CardTitle>
+    <Card className="w-full animate-fade-in">
+      <CardHeader className="pb-2">
+        <CardTitle>Receipt Trends</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart
-            data={data}
-            margin={{
-              top: 5,
-              right: 10,
-              left: 0,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-            <XAxis
-              dataKey="name"
-              stroke="#888888"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              stroke="#888888"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--background))",
-                borderColor: "hsl(var(--border))",
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="receipts"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
-              activeDot={{ r: 8 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="adminReceipts"
-              stroke="hsl(var(--gold))"
-              strokeWidth={2}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <CardContent className="pt-0">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+              <Tooltip />
+              <Legend />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="receipts"
+                stroke="#8884d8"
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="weight"
+                stroke="#82ca9d"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );
 }
 
 export function MetalTypeTrendChart() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await analyticsServices.getMetalTypeDistribution();
+        setData(response);
+      } catch (error) {
+        console.error("Error fetching metal type distribution:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
-    <Card className="card-premium">
-      <CardHeader>
-        <CardTitle>Metal Type Trend</CardTitle>
+    <Card className="w-full animate-fade-in">
+      <CardHeader className="pb-2">
+        <CardTitle>Metal Type Distribution</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart
-            data={data}
-            margin={{
-              top: 5,
-              right: 10,
-              left: 0,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-            <XAxis
-              dataKey="name"
-              stroke="#888888"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              stroke="#888888"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--background))",
-                borderColor: "hsl(var(--border))",
-              }}
-            />
-            <Bar dataKey="gold" fill="hsl(var(--gold))" radius={[4, 4, 0, 0]} />
-            <Bar
-              dataKey="silver"
-              fill="hsl(var(--muted-foreground))"
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              dataKey="platinum"
-              fill="hsl(var(--primary))"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+      <CardContent className="pt-0">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="count"
+                label={({ name, percent }) =>
+                  `${name}: ${(percent * 100).toFixed(0)}%`
+                }
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );
 }
 
 export function WeightProcessedChart() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const yearlyData = await analyticsServices.getYearlyComparison();
+        
+        // Process data for comparison chart
+        const processedData = processYearlyData(yearlyData);
+        setData(processedData);
+      } catch (error) {
+        console.error("Error fetching weight processed data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const processYearlyData = (data) => {
+    const { currentYear, previousYear } = data;
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    
+    return months.map((month, idx) => {
+      const monthNum = idx + 1;
+      
+      const currYearData = currentYear.find(item => item.month === monthNum) || { totalWeight: 0 };
+      const prevYearData = previousYear.find(item => item.month === monthNum) || { totalWeight: 0 };
+      
+      return {
+        name: month,
+        currentYear: currYearData.totalWeight,
+        previousYear: prevYearData.totalWeight,
+      };
+    });
+  };
+
   return (
-    <Card className="card-premium">
-      <CardHeader>
-        <CardTitle>Weight Processed</CardTitle>
+    <Card className="w-full animate-fade-in">
+      <CardHeader className="pb-2">
+        <CardTitle>Weight Processed - Yearly Comparison</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart
-            data={data}
-            margin={{
-              top: 5,
-              right: 10,
-              left: 0,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-            <XAxis
-              dataKey="name"
-              stroke="#888888"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              stroke="#888888"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--background))",
-                borderColor: "hsl(var(--border))",
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="weight"
-              stroke="hsl(var(--gold-dark))"
-              fill="hsl(var(--gold-light))"
-              fillOpacity={0.2}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <CardContent className="pt-0">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart
+              data={data}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="currentYear" name="Current Year" fill="#8884d8" />
+              <Bar dataKey="previousYear" name="Previous Year" fill="#82ca9d" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );

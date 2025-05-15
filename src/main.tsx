@@ -3,15 +3,30 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-// MongoDB URI is now stored in a configuration value that can be accessed in services
-const MONGODB_URI = "mongodb+srv://Vignesh:vignesh@cluster0.6fjqe2e.mongodb.net/goldsmith?retryWrites=true&w=majority&appName=Cluster0";
-
-// For security, in a production app, this URI should be stored in environment variables
-// and only accessed on the backend, not exposed in the frontend
+// API configuration for the application
+const config = {
+  // Base API URL - will be replaced with your deployed backend URL
+  apiUrl: import.meta.env.PROD 
+    ? 'https://your-deployed-api.com/api'
+    : 'http://localhost:5000/api',
+  
+  // MongoDB Atlas URI - only used in backend
+  mongodbUri: import.meta.env.MONGO_URI || "mongodb+srv://your-mongodb-uri",
+};
 
 // Export for use in services
-export const config = {
-  mongodbUri: MONGODB_URI,
-};
+export { config };
+
+// Add event listener for animation effects
+document.addEventListener('DOMContentLoaded', () => {
+  // Add staggered animation to elements with data-animate attribute
+  const animatedElements = document.querySelectorAll('[data-animate]');
+  
+  animatedElements.forEach((el, index) => {
+    setTimeout(() => {
+      el.classList.add('animate-fade-in');
+    }, index * 100); // 100ms stagger between animations
+  });
+});
 
 createRoot(document.getElementById("root")!).render(<App />);
