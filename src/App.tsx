@@ -22,27 +22,10 @@ import ReceiptDetailsPage from "./pages/receipts/[id]";
 import EditReceiptPage from "./pages/receipts/[id]/edit";
 import ClientSelectionPage from "./pages/receipts/select-client";
 
-// Let's create placeholder pages for the missing routes
-const AdminReceiptsPage = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold mb-4">Admin Receipts</h1>
-    <p>Admin Receipt page content will be implemented soon.</p>
-  </div>
-);
-
-const AdminBillsPage = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold mb-4">Admin Bills</h1>
-    <p>Admin Bills page content will be implemented soon.</p>
-  </div>
-);
-
-const ClientBillsPage = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold mb-4">Client Bills</h1>
-    <p>Client Bills page content will be implemented soon.</p>
-  </div>
-);
+// Import our implemented pages
+import AdminReceiptsPage from "./pages/admin-receipts";
+import AdminBillsPage from "./pages/admin-bills";
+import ClientBillsPage from "./pages/client-bills";
 
 const queryClient = new QueryClient();
 
@@ -71,7 +54,7 @@ const App = () => (
               <Route path="receipts/:id" element={<ReceiptDetailsPage />} />
               <Route path="receipts/:id/edit" element={<EditReceiptPage />} />
               
-              {/* Add the missing routes */}
+              {/* Add the implemented routes */}
               <Route path="admin-receipts" element={<AdminReceiptsPage />} />
               <Route path="admin-bills" element={<AdminBillsPage />} />
               <Route path="client-bills" element={<ClientBillsPage />} />
