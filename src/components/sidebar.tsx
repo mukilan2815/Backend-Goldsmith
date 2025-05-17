@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -137,9 +138,6 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
           <QuickLinks />
           
           <Separator className="my-2" />
-          
-          {/* This is where we add the children prop */}
-          {children}
           
           <div className="px-3 py-2 space-y-1">
             <SidebarItem
