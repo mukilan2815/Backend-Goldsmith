@@ -2,12 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Users,
-  FileSpreadsheet,
   Settings,
-  FilePlus,
-  User,
-  ChevronRight,
   Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -72,12 +67,6 @@ function SidebarItem({
           {!isCollapsed && (
             <>
               <span className="grow">{title}</span>
-              <ChevronRight
-                className={cn(
-                  "h-4 w-4 transition-all",
-                  isSubmenuOpen && "transform rotate-90"
-                )}
-              />
             </>
           )}
         </Link>
@@ -134,7 +123,7 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
           </Link>
         </div>
         <ScrollArea className="h-[calc(100vh-4rem)]">
-          {/* Include QuickLinks component */}
+          {/* Include QuickLinks component only once */}
           <QuickLinks />
           
           <Separator className="my-2" />

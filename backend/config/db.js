@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // MongoDB connection string - will be replaced with your Atlas URI
-    const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/goldsmith';
+    // MongoDB connection string with your Atlas URI
+    const mongoURI = process.env.MONGO_URI || 'mongodb+srv://Vignesh:vignesh@cluster0.6fjqe2e.mongodb.net/goldsmith?retryWrites=true&w=majority&appName=Cluster0';
     
     const conn = await mongoose.connect(mongoURI, {
       useNewUrlParser: true,

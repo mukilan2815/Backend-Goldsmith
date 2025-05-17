@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +21,28 @@ import NewReceiptPage from "./pages/receipts/new";
 import ReceiptDetailsPage from "./pages/receipts/[id]";
 import EditReceiptPage from "./pages/receipts/[id]/edit";
 import ClientSelectionPage from "./pages/receipts/select-client";
+
+// Let's create placeholder pages for the missing routes
+const AdminReceiptsPage = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-4">Admin Receipts</h1>
+    <p>Admin Receipt page content will be implemented soon.</p>
+  </div>
+);
+
+const AdminBillsPage = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-4">Admin Bills</h1>
+    <p>Admin Bills page content will be implemented soon.</p>
+  </div>
+);
+
+const ClientBillsPage = () => (
+  <div className="p-6">
+    <h1 className="text-2xl font-bold mb-4">Client Bills</h1>
+    <p>Client Bills page content will be implemented soon.</p>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -50,8 +71,12 @@ const App = () => (
               <Route path="receipts/:id" element={<ReceiptDetailsPage />} />
               <Route path="receipts/:id/edit" element={<EditReceiptPage />} />
               
-              {/* Future Routes */}
-              <Route path="receipts/admin" element={<div className="p-6">Admin Receipts Page Coming Soon</div>} />
+              {/* Add the missing routes */}
+              <Route path="admin-receipts" element={<AdminReceiptsPage />} />
+              <Route path="admin-bills" element={<AdminBillsPage />} />
+              <Route path="client-bills" element={<ClientBillsPage />} />
+              
+              {/* Other Routes */}
               <Route path="reports" element={<div className="p-6">Reports Page Coming Soon</div>} />
               <Route path="settings" element={<div className="p-6">Settings Page Coming Soon</div>} />
             </Route>
