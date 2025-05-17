@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -15,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { QuickLinks } from "@/components/quick-links";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -133,6 +133,11 @@ export function Sidebar({ isOpen, onClose, children }: SidebarProps) {
           </Link>
         </div>
         <ScrollArea className="h-[calc(100vh-4rem)]">
+          {/* Include QuickLinks component */}
+          <QuickLinks />
+          
+          <Separator className="my-2" />
+          
           {/* This is where we add the children prop */}
           {children}
           

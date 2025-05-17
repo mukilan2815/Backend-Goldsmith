@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { Plus, FileText, Receipt, ShieldCheck, CreditCard, User } from "lucide-react";
+import { Plus, FileText, Receipt, ShieldCheck, CreditCard, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -49,6 +49,12 @@ export const QuickLinks = () => {
           label="New Client"
           to="/clients/new"
           delay={0.1}
+        />
+        <QuickLinkItem
+          icon={<Users className="h-4 w-4" />}
+          label="Customer Details"
+          to="/clients"
+          delay={0.15}
         />
         <QuickLinkItem
           icon={<Receipt className="h-4 w-4" />}
