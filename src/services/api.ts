@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { toast } from '@/components/ui/use-toast';
 
@@ -160,6 +159,12 @@ export const adminReceiptServices = {
     return response.data;
   },
   
+  // Get admin receipts by client ID
+  getClientAdminReceipts: async (clientId: string) => {
+    const response = await api.get(`/admin-receipts?clientId=${clientId}`);
+    return response.data;
+  },
+  
   // Create new admin receipt
   createAdminReceipt: async (receiptData: any) => {
     const response = await api.post('/admin-receipts', receiptData);
@@ -176,32 +181,38 @@ export const adminReceiptServices = {
   deleteAdminReceipt: async (id: string) => {
     const response = await api.delete(`/admin-receipts/${id}`);
     return response.data;
+  },
+  
+  // Generate unique voucher ID
+  generateVoucherId: async () => {
+    const response = await api.get('/admin-receipts/generate-voucher-id');
+    return response.data;
+  },
+  
+  // Search admin receipts
+  searchAdminReceipts: async (params: any) => {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/admin-receipts/search?${queryString}`);
+    return response.data;
   }
 };
 
 // Admin bill services
 export const adminBillServices = {
   // Get all admin bills
-  getAdminBills: async () => {
-    const response = await api.get('/admin-bills');
+  getAdminBills: async (params?: any) => {
+    let url = '/admin-bills';
+    if (params) {
+      const queryString = new URLSearchParams(params).toString();
+      url = `${url}?${queryString}`;
+    }
+    const response = await api.get(url);
     return response.data;
   },
   
   // Get admin bill by ID
   getAdminBill: async (id: string) => {
     const response = await api.get(`/admin-bills/${id}`);
-    return response.data;
-  },
-  
-  // Create new admin bill
-  createAdminBill: async (billData: any) => {
-    const response = await api.post('/admin-bills', billData);
-    return response.data;
-  },
-  
-  // Update admin bill
-  updateAdminBill: async (id: string, billData: any) => {
-    const response = await api.put(`/admin-bills/${id}`, billData);
     return response.data;
   },
   
@@ -212,10 +223,43 @@ export const adminBillServices = {
   }
 };
 
+// Bill services
+export const billServices = {
+  // Get all client bills
+  getBills: async (params?: any) => {
+    let url = '/bills';
+    if (params) {
+      const queryString = new URLSearchParams(params).toString();
+      url = `${url}?${queryString}`;
+    }
+    const response = await api.get(url);
+    return response.data;
+  },
+  
+  // Get bill by ID
+  getBill: async (id: string) => {
+    const response = await api.get(`/bills/${id}`);
+    return response.data;
+  },
+  
+  // Download bill as PDF
+  downloadBill: async (id: string) => {
+    const response = await api.get(`/bills/${id}/download`);
+    return response.data;
+  },
+  
+  // Delete bill
+  deleteBill: async (id: string) => {
+    const response = await api.delete(`/bills/${id}`);
+    return response.data;
+  }
+};
+
 export default {
   clientServices,
   receiptServices,
   analyticsServices,
   adminReceiptServices,
-  adminBillServices
+  adminBillServices,
+  billServices
 };

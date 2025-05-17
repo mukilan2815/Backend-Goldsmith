@@ -34,6 +34,9 @@ app.use('/api/clients', require('./routes/clientRoutes'));
 app.use('/api/receipts', require('./routes/receiptRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/uploads', require('./routes/uploadRoutes'));
+app.use('/api/admin-receipts', require('./routes/adminReceiptRoutes'));
+app.use('/api/bills', require('./routes/billRoutes'));
+app.use('/api/admin-bills', require('./routes/adminBillRoutes'));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
