@@ -26,18 +26,24 @@ export default function NewReceiptPage() {
     queryKey: ['client', clientId],
     queryFn: () => clientServices.getClient(clientId),
     enabled: !!clientId && !location.state?.client?.address, // Only fetch if we have clientId but need more details
-    onSuccess: (data) => {
-      setClient(data);
-    },
-    onError: (err) => {
+    meta: {
+      onSuccess: (data: any) => {
+        setClient(data);
+      }
+    }
+  });
+
+  // Error handling moved outside the useQuery
+  useEffect(() => {
+    if (isError) {
       toast({
         title: "Error",
         description: "Failed to load client details. Please try again.",
         variant: "destructive",
       });
-      console.error("Error fetching client:", err);
+      console.error("Error fetching client:", isError);
     }
-  });
+  }, [isError, toast]);
 
   // Check if client data was passed via location state
   useEffect(() => {

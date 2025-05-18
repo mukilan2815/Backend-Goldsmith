@@ -31,17 +31,18 @@ export default function ClientSelectionPage() {
   } = useQuery({
     queryKey: ['clients'],
     queryFn: () => clientServices.getClients(),
-    onError: (err) => {
-      console.error("Error fetching clients:", err);
-      toast({
-        title: "Error",
-        description: "Failed to load clients. Please try again.",
-        variant: "destructive",
-      });
+    meta: {
+      onError: (err: any) => {
+        console.error("Error fetching clients:", err);
+        toast({
+          title: "Error",
+          description: "Failed to load clients. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   });
 
-  // Filter clients based on search term
   const filteredClients = clientsData?.clients?.filter(
     (client) =>
       (client.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -49,13 +49,15 @@ export default function ReceiptsPage() {
   } = useQuery({
     queryKey: ['receipts'],
     queryFn: () => receiptServices.getReceipts(),
-    onError: (err) => {
-      console.error("Error fetching receipts:", err);
-      toast({
-        title: "Error",
-        description: "Failed to load receipts. Please try again.",
-        variant: "destructive",
-      });
+    meta: {
+      onError: (err: any) => {
+        console.error("Error fetching receipts:", err);
+        toast({
+          title: "Error",
+          description: "Failed to load receipts. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   });
 
@@ -73,7 +75,7 @@ export default function ReceiptsPage() {
       setDeleteDialogOpen(false);
       setReceiptToDelete(null);
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error("Error deleting receipt:", err);
       toast({
         title: "Error",
