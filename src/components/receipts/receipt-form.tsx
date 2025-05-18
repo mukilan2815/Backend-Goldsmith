@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -101,6 +102,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
       stoneAmount: 0,
     },
   ]);
+  const [overallWeight, setOverallWeight] = useState(0);
 
   // Generate a real voucher ID when component mounts
   useEffect(() => {
@@ -236,26 +238,31 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
         return;
       }
 
-      // Prepare receipt data with calculated values for MongoDB
+      // Prepare receipt data with the exact structure needed for MongoDB
       const receiptData = {
         clientId: client.id,
-        clientInfo: {
-          clientName: client.clientName || "",
-          shopName: client.shopName || "",
-          phoneNumber: client.phoneNumber || "",
-        },
+        clientName: client.clientName || "",
+        shopName: client.shopName || "",
+        phoneNumber: client.phoneNumber || "",
         metalType: formData.metalType,
+        overallWeight: formData.overallWeight || overallWeight,
         issueDate: formData.date,
-        items: items.map((item) => ({
+        tableData: items.map((item) => ({
           itemName: item.description,
           tag: item.tag || "",
-          grossWt: item.grossWeight,
-          stoneWt: item.stoneWeight,
-          meltingTouch: item.meltingPercent,
-          stoneAmt: item.stoneAmount || 0,
+          grossWt: item.grossWeight.toString(),
+          stoneWt: item.stoneWeight.toString(),
+          meltingTouch: item.meltingPercent.toString(),
+          stoneAmt: (item.stoneAmount || 0).toString(),
         })),
         voucherId: voucherId,
-        // Totals will be calculated on the server using our pre-save hook
+        totals: {
+          grossWt: totals.grossWeight,
+          stoneWt: totals.stoneWeight,
+          netWt: totals.netWeight,
+          finalWt: totals.finalWeight,
+          stoneAmt: totals.stoneAmount,
+        },
       };
 
       console.log("Saving receipt data:", receiptData);
@@ -341,7 +348,10 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                 <FormItem>
                   <FormLabel>Select Metal Type</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setMetalType(value);
+                    }}
                     defaultValue={field.value}
                   >
                     <FormControl>
@@ -373,7 +383,11 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                       type="number"
                       placeholder="Overall weight"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        field.onChange(value);
+                        setOverallWeight(value);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

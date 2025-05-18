@@ -1,3 +1,4 @@
+
 const Receipt = require('../models/receiptModel');
 const Client = require('../models/clientModel');
 const asyncHandler = require('express-async-handler');
@@ -118,51 +119,89 @@ const getReceiptsByClientId = asyncHandler(async (req, res) => {
 // @route   POST /api/receipts
 // @access  Public
 const createReceipt = asyncHandler(async (req, res) => {
-  const { clientId, clientInfo, metalType, issueDate, items, totals, notes, deliveryDate } = req.body;
+  console.log("Received receipt data:", req.body);
+  
+  const { 
+    clientId, 
+    clientName, 
+    shopName, 
+    phoneNumber, 
+    metalType, 
+    overallWeight,
+    issueDate, 
+    tableData, 
+    totals, 
+    notes, 
+    deliveryDate,
+    voucherId
+  } = req.body;
 
-  // Log the incoming data
-  console.log('Creating receipt with data:', req.body);
-
-  // Validate client exists
+  // Validate client exists if ID is provided
   let client;
-  try {
-    client = await Client.findById(clientId);
-    if (!client) {
-      res.status(404);
-      throw new Error('Client not found');
+  if (clientId) {
+    try {
+      client = await Client.findById(clientId);
+      if (!client && clientId !== 'temp-id') {
+        res.status(404);
+        throw new Error('Client not found');
+      }
+    } catch (error) {
+      console.log('Client validation error:', error.message);
+      // If it's not a "Client not found" error but a database error
+      if (error.message !== 'Client not found') {
+        console.error('Database error during client lookup:', error);
+        res.status(500);
+        throw new Error('Database error during client validation');
+      }
+      throw error; // Re-throw the "Client not found" error
     }
-  } catch (error) {
-    console.log('Client validation error:', error.message);
-    // If it's not a "Client not found" error but a database error
-    if (error.message !== 'Client not found') {
-      console.error('Database error during client lookup:', error);
-      res.status(500);
-      throw new Error('Database error during client validation');
-    }
-    throw error; // Re-throw the "Client not found" error
   }
 
   // Generate unique voucher ID if not provided
-  let voucherId = req.body.voucherId;
-  if (!voucherId) {
-    voucherId = await generateVoucherId();
+  let finalVoucherId = voucherId;
+  if (!finalVoucherId) {
+    finalVoucherId = await generateVoucherId();
   }
 
   try {
-    const receipt = await Receipt.create({
+    // Map items from tableData format to the expected model format
+    const items = tableData?.map(item => ({
+      itemName: item.itemName,
+      tag: item.tag || "",
+      grossWt: parseFloat(item.grossWt) || 0,
+      stoneWt: parseFloat(item.stoneWt) || 0,
+      meltingTouch: parseFloat(item.meltingTouch) || 0,
+      stoneAmt: parseFloat(item.stoneAmt) || 0,
+    })) || [];
+
+    const receiptData = {
       clientId,
-      clientInfo: clientInfo || {
-        clientName: client.clientName,
-        shopName: client.shopName,
-        phoneNumber: client.phoneNumber,
+      clientInfo: {
+        clientName: clientName || (client?.clientName || ""),
+        shopName: shopName || (client?.shopName || ""),
+        phoneNumber: phoneNumber || (client?.phoneNumber || ""),
       },
       metalType,
+      overallWeight: parseFloat(overallWeight) || 0,
       issueDate: issueDate || new Date(),
-      items,
-      voucherId,
+      items: items,
+      voucherId: finalVoucherId,
       notes,
       deliveryDate,
-    });
+      // If totals are provided, use them, otherwise they'll be calculated by the model
+      ...(totals && {
+        totals: {
+          grossWt: parseFloat(totals.grossWt) || 0,
+          stoneWt: parseFloat(totals.stoneWt) || 0,
+          netWt: parseFloat(totals.netWt) || 0,
+          finalWt: parseFloat(totals.finalWt) || 0,
+          stoneAmt: parseFloat(totals.stoneAmt) || 0,
+        }
+      })
+    };
+
+    console.log("Creating receipt with data:", receiptData);
+    const receipt = await Receipt.create(receiptData);
 
     if (receipt) {
       res.status(201).json(receipt);
