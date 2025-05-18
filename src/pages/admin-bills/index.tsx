@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -11,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { adminBillServices } from "@/services/api-admin";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, Trash, Search } from "lucide-react";
+import { Eye, Trash, Edit, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Pagination,
@@ -157,6 +156,11 @@ const AdminBillsPage = () => {
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={`/admin-receipts/${bill._id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                            </Button>
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -172,7 +176,7 @@ const AdminBillsPage = () => {
                 </Table>
               </div>
               
-              {totalPages > 1 && (
+              {totalPages > 0 && (
                 <Pagination className="mt-4">
                   <PaginationContent>
                     <PaginationItem>

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { Trash, Plus, Loader, Calendar } from "lucide-react";
+import { Trash, Plus, Loader, Calendar, Save } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -70,8 +70,6 @@ const receivedItemSchema = z.object({
 
 // Main form schema
 const adminReceiptSchema = z.object({
-  clientId: z.string().min(1, { message: "Client ID is required" }),
-  clientName: z.string().optional(),
   givenDate: z.date({
     required_error: "Given date is required",
   }),
@@ -85,13 +83,20 @@ const adminReceiptSchema = z.object({
 
 type AdminReceiptFormValues = z.infer<typeof adminReceiptSchema>;
 
-export function AdminReceiptForm() {
+interface AdminReceiptFormProps {
+  selectedClient: {
+    id: string;
+    name: string;
+  };
+  receiptData?: any;
+}
+
+export function AdminReceiptForm({ selectedClient, receiptData }: AdminReceiptFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("given");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clientName, setClientName] = useState("");
-  const [isLoadingClient, setIsLoadingClient] = useState(false);
+  const [isSubmittingGiven, setIsSubmittingGiven] = useState(false);
+  const [isSubmittingReceived, setIsSubmittingReceived] = useState(false);
   const [voucherId, setVoucherId] = useState("");
   
   // Items state
@@ -118,75 +123,72 @@ export function AdminReceiptForm() {
   const form = useForm<AdminReceiptFormValues>({
     resolver: zodResolver(adminReceiptSchema),
     defaultValues: {
-      clientId: "",
-      clientName: "",
-      givenDate: new Date(),
-      receivedDate: new Date(),
-      manualGivenTotal: 0,
-      manualReceivedTotal: 0,
-      operation: "subtract-given-received",
+      givenDate: receiptData?.given?.date ? new Date(receiptData.given.date) : new Date(),
+      receivedDate: receiptData?.received?.date ? new Date(receiptData.received.date) : new Date(),
+      manualGivenTotal: receiptData?.manualCalculation?.givenTotal || 0,
+      manualReceivedTotal: receiptData?.manualCalculation?.receivedTotal || 0,
+      operation: receiptData?.manualCalculation?.operation || "subtract-given-received",
     },
   });
 
   // Generate voucher ID on component mount
   useEffect(() => {
-    const generateVoucherId = async () => {
-      try {
-        // Normally, we'd call an API to get a voucher ID
-        // For now, we'll generate a mock one
-        const date = new Date();
-        const year = date.getFullYear().toString().substr(-2);
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-        
-        setVoucherId(`GA-${year}${month}-${randomNum}`);
-      } catch (error) {
-        console.error("Failed to generate voucher ID:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to generate voucher ID",
-        });
-      }
-    };
+    if (receiptData && receiptData.voucherId) {
+      setVoucherId(receiptData.voucherId);
+    } else {
+      const generateVoucherId = async () => {
+        try {
+          // Normally, we'd call an API to get a voucher ID
+          // For now, we'll generate a mock one
+          const date = new Date();
+          const year = date.getFullYear().toString().substr(-2);
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const randomNum = Math.floor(1000 + Math.random() * 9000);
+          
+          setVoucherId(`GA-${year}${month}-${randomNum}`);
+        } catch (error) {
+          console.error("Failed to generate voucher ID:", error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to generate voucher ID",
+          });
+        }
+      };
 
-    generateVoucherId();
-  }, [toast]);
-
-  // Client lookup
-  const lookupClient = async (clientId: string) => {
-    if (!clientId) return;
-    
-    setIsLoadingClient(true);
-    setClientName("");
-    
-    try {
-      // Mock API call - in reality, we'd fetch from an API
-      // await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // For demo, just set a mock client name
-      if (clientId === "1001") {
-        setClientName("Golden Creations");
-      } else if (clientId === "1002") {
-        setClientName("Silver Linings");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Client not found",
-          description: "No client found with the provided ID",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to lookup client:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to lookup client information",
-      });
-    } finally {
-      setIsLoadingClient(false);
+      generateVoucherId();
     }
-  };
+  }, [receiptData, toast]);
+
+  // Initialize form with existing data if editing
+  useEffect(() => {
+    if (receiptData) {
+      if (receiptData.given && receiptData.given.items && receiptData.given.items.length > 0) {
+        const formattedGivenItems = receiptData.given.items.map((item: any) => ({
+          id: item.id || uuidv4(),
+          productName: item.productName || "",
+          pureWeight: String(item.pureWeight || ""),
+          purePercent: String(item.purePercent || ""),
+          melting: String(item.melting || ""),
+          total: item.total || 0
+        }));
+        setGivenItems(formattedGivenItems);
+      }
+
+      if (receiptData.received && receiptData.received.items && receiptData.received.items.length > 0) {
+        const formattedReceivedItems = receiptData.received.items.map((item: any) => ({
+          id: item.id || uuidv4(),
+          productName: item.productName || "",
+          finalOrnamentsWt: String(item.finalOrnamentsWt || ""),
+          stoneWeight: String(item.stoneWeight || "0"),
+          makingChargePercent: String(item.makingChargePercent || ""),
+          subTotal: item.subTotal || 0,
+          total: item.total || 0
+        }));
+        setReceivedItems(formattedReceivedItems);
+      }
+    }
+  }, [receiptData]);
 
   // Add a new given item
   const addGivenItem = () => {
@@ -326,134 +328,135 @@ export function AdminReceiptForm() {
     }
   };
 
-  // Form submission
-  const onSubmit = async (formData: AdminReceiptFormValues) => {
-    if (givenItems.length === 0 || receivedItems.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "At least one given and received item is required",
-      });
-      return;
-    }
-    
-    setIsSubmitting(true);
+  // Save Given Data
+  const saveGivenData = async () => {
+    setIsSubmittingGiven(true);
     
     try {
-      // Prepare receipt data
-      const receiptData = {
-        clientId: formData.clientId,
-        clientName: clientName,
-        given: {
-          date: formData.givenDate,
-          items: givenItems,
-          totalPureWeight: givenTotals.totalPureWeight,
-          total: givenTotals.total
-        },
-        received: {
-          date: formData.receivedDate,
-          items: receivedItems,
-          totalOrnamentsWt: receivedTotals.totalOrnamentsWt,
-          totalStoneWeight: receivedTotals.totalStoneWeight,
-          totalSubTotal: receivedTotals.totalSubTotal,
-          total: receivedTotals.total
-        },
-        status: 'incomplete',
-        voucherId,
-        manualCalculation: {
-          givenTotal: formData.manualGivenTotal,
-          receivedTotal: formData.manualReceivedTotal,
-          operation: formData.operation,
-          result: calculateManualResult()
+      const givenDate = form.getValues("givenDate");
+      
+      if (!givenDate) {
+        toast({
+          variant: "destructive",
+          title: "Missing Date",
+          description: "Please select a given date",
+        });
+        setIsSubmittingGiven(false);
+        return;
+      }
+      
+      // Validate given items
+      for (const item of givenItems) {
+        try {
+          givenItemSchema.parse(item);
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please fill all required fields for each given item",
+          });
+          setIsSubmittingGiven(false);
+          return;
         }
+      }
+      
+      const givenData = {
+        date: givenDate,
+        items: givenItems,
+        totalPureWeight: givenTotals.totalPureWeight,
+        total: givenTotals.total
       };
       
-      // Simulating API call
-      console.log("Submitting admin receipt:", receiptData);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log("Saving given data:", givenData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       toast({
         title: "Success",
-        description: "Admin receipt created successfully",
+        description: "Given items saved successfully",
       });
-      
-      // Navigate to the admin receipts list
-      navigate("/admin-receipts");
     } catch (error) {
-      console.error("Failed to create admin receipt:", error);
+      console.error("Error saving given data:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create admin receipt",
+        description: "Failed to save given items",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingGiven(false);
+    }
+  };
+
+  // Save Received Data
+  const saveReceivedData = async () => {
+    setIsSubmittingReceived(true);
+    
+    try {
+      const receivedDate = form.getValues("receivedDate");
+      
+      if (!receivedDate) {
+        toast({
+          variant: "destructive",
+          title: "Missing Date",
+          description: "Please select a received date",
+        });
+        setIsSubmittingReceived(false);
+        return;
+      }
+      
+      // Validate received items
+      for (const item of receivedItems) {
+        try {
+          receivedItemSchema.parse(item);
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please fill all required fields for each received item",
+          });
+          setIsSubmittingReceived(false);
+          return;
+        }
+      }
+      
+      const receivedData = {
+        date: receivedDate,
+        items: receivedItems,
+        totalOrnamentsWt: receivedTotals.totalOrnamentsWt,
+        totalStoneWeight: receivedTotals.totalStoneWeight,
+        totalSubTotal: receivedTotals.totalSubTotal,
+        total: receivedTotals.total
+      };
+      
+      console.log("Saving received data:", receivedData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      toast({
+        title: "Success",
+        description: "Received items saved successfully",
+      });
+    } catch (error) {
+      console.error("Error saving received data:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save received items",
+      });
+    } finally {
+      setIsSubmittingReceived(false);
     }
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Client Identification Section */}
-        <div className="bg-background/50 p-6 rounded-md border">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">Client Information</h3>
-            <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-medium">
-              Voucher ID: {voucherId}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Client ID</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Enter client ID"
-                        onChange={(e) => {
-                          field.onChange(e);
-                          if (e.target.value.length > 3) {
-                            lookupClient(e.target.value);
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      onClick={() => lookupClient(field.value)}
-                      disabled={!field.value || isLoadingClient}
-                    >
-                      {isLoadingClient ? <Loader className="h-4 w-4 animate-spin" /> : "Lookup"}
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="clientName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Client Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      value={clientName}
-                      readOnly
-                      disabled
-                      placeholder="Client name will appear here"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <form className="space-y-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-medium">Admin Receipt for: {selectedClient.name}</h2>
+          <div className="bg-primary/10 px-3 py-1 rounded-md text-primary font-medium">
+            Voucher ID: {voucherId}
           </div>
         </div>
 
@@ -468,54 +471,47 @@ export function AdminReceiptForm() {
           <TabsContent value="given" className="mt-4">
             <div className="bg-background/50 p-6 rounded-md border">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Given Items</h3>
-                <Button
-                  type="button" 
-                  onClick={addGivenItem}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Given Item
-                </Button>
+                <h3 className="text-lg font-medium">Given Details (Client: {selectedClient.name})</h3>
               </div>
 
               {/* Given Date */}
-              <FormField
-                control={form.control}
-                name="givenDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col mb-4">
-                    <FormLabel>Given Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className="w-full max-w-xs justify-start text-left font-normal"
-                          >
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="flex justify-end mb-4">
+                <FormField
+                  control={form.control}
+                  name="givenDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className="w-[240px] justify-start text-left font-normal"
+                            >
+                              <Calendar className="mr-2 h-4 w-4" />
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick Given Date</span>
+                              )}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* Given Items Table */}
               <div className="overflow-x-auto">
@@ -525,10 +521,10 @@ export function AdminReceiptForm() {
                       <th className="py-2 px-2 text-sm font-medium text-center">S.No.</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Product Name</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Pure Weight</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">Pure Percent (%)</th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">Pure %</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Melting</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Total</th>
-                      <th className="w-10"></th>
+                      <th className="w-10 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -587,23 +583,32 @@ export function AdminReceiptForm() {
                     
                     {/* Totals Row */}
                     <tr className="font-medium bg-accent/20">
-                      <td className="py-2 px-2 text-right" colSpan={2}>Totals</td>
-                      <td className="py-2 px-2"></td>
-                      <td className="py-2 px-2"></td>
-                      <td className="py-2 px-2 text-right">Total Pure Weight:</td>
-                      <td className="py-2 px-2 text-center">{givenTotals.totalPureWeight.toFixed(3)}</td>
-                      <td className="py-2 px-2"></td>
-                    </tr>
-                    <tr className="font-medium bg-accent/20">
-                      <td className="py-2 px-2" colSpan={2}></td>
-                      <td className="py-2 px-2"></td>
-                      <td className="py-2 px-2"></td>
-                      <td className="py-2 px-2 text-right">Grand Total (Net):</td>
+                      <td colSpan={5} className="py-2 px-2 text-right">Total:</td>
                       <td className="py-2 px-2 text-center">{givenTotals.total.toFixed(3)}</td>
                       <td className="py-2 px-2"></td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              
+              <div className="flex justify-between mt-4">
+                <Button
+                  type="button" 
+                  onClick={addGivenItem}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add Given Item
+                </Button>
+                <Button
+                  type="button"
+                  onClick={saveGivenData}
+                  variant="default"
+                  disabled={isSubmittingGiven}
+                >
+                  {isSubmittingGiven && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save className="mr-2 h-4 w-4" /> Save Given Data
+                </Button>
               </div>
             </div>
           </TabsContent>
@@ -612,54 +617,47 @@ export function AdminReceiptForm() {
           <TabsContent value="received" className="mt-4">
             <div className="bg-background/50 p-6 rounded-md border">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Received Items</h3>
-                <Button
-                  type="button" 
-                  onClick={addReceivedItem}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Received Item
-                </Button>
+                <h3 className="text-lg font-medium">Received Details (Client: {selectedClient.name})</h3>
               </div>
 
               {/* Received Date */}
-              <FormField
-                control={form.control}
-                name="receivedDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col mb-4">
-                    <FormLabel>Received Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className="w-full max-w-xs justify-start text-left font-normal"
-                          >
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="flex justify-end mb-4">
+                <FormField
+                  control={form.control}
+                  name="receivedDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className="w-[240px] justify-start text-left font-normal"
+                            >
+                              <Calendar className="mr-2 h-4 w-4" />
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick Received Date</span>
+                              )}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* Received Items Table */}
               <div className="overflow-x-auto">
@@ -670,10 +668,10 @@ export function AdminReceiptForm() {
                       <th className="py-2 px-2 text-sm font-medium text-center">Product Name</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Final Ornaments Wt</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Stone Weight</th>
+                      <th className="py-2 px-2 text-sm font-medium text-center">Sub Total</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Making Charge (%)</th>
-                      <th className="py-2 px-2 text-sm font-medium text-center">SubTotal</th>
                       <th className="py-2 px-2 text-sm font-medium text-center">Total</th>
-                      <th className="w-10"></th>
+                      <th className="w-10 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -704,6 +702,9 @@ export function AdminReceiptForm() {
                             className="bg-card border border-input text-center"
                           />
                         </td>
+                        <td className="py-2 px-2 text-center">
+                          {item.subTotal.toFixed(3)}
+                        </td>
                         <td className="py-2 px-2">
                           <Input
                             value={item.makingChargePercent}
@@ -711,9 +712,6 @@ export function AdminReceiptForm() {
                             placeholder="0.00"
                             className="bg-card border border-input text-center"
                           />
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          {item.subTotal.toFixed(3)}
                         </td>
                         <td className="py-2 px-2 text-center">
                           {item.total.toFixed(3)}
@@ -735,86 +733,84 @@ export function AdminReceiptForm() {
                     
                     {/* Totals Rows */}
                     <tr className="font-medium bg-accent/20">
-                      <td className="py-2 px-2 text-right" colSpan={2}>Totals</td>
+                      <td colSpan={2} className="py-2 px-2 text-right">Total:</td>
                       <td className="py-2 px-2 text-center">{receivedTotals.totalOrnamentsWt.toFixed(3)}</td>
                       <td className="py-2 px-2 text-center">{receivedTotals.totalStoneWeight.toFixed(3)}</td>
-                      <td className="py-2 px-2"></td>
                       <td className="py-2 px-2 text-center">{receivedTotals.totalSubTotal.toFixed(3)}</td>
+                      <td className="py-2 px-2"></td>
                       <td className="py-2 px-2 text-center">{receivedTotals.total.toFixed(3)}</td>
                       <td className="py-2 px-2"></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
+              
+              <div className="flex justify-between mt-4">
+                <Button
+                  type="button" 
+                  onClick={addReceivedItem}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add Received Item
+                </Button>
+                <Button
+                  type="button"
+                  onClick={saveReceivedData}
+                  variant="default"
+                  disabled={isSubmittingReceived}
+                >
+                  {isSubmittingReceived && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                  <Save className="mr-2 h-4 w-4" /> Save Received Data
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
 
         {/* Manual Calculation Section */}
-        <div className="bg-background/50 p-6 rounded-md border">
-          <h3 className="text-lg font-medium mb-4">Manual Net Balance Calculation</h3>
+        <div className="bg-background/50 p-6 rounded-md border mt-6">
+          <h3 className="text-lg font-medium mb-2">Manual Comparison</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Manually input totals for comparison. This section is for on-screen calculation only and is not saved with the receipt.
+          </p>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <FormField
-              control={form.control}
-              name="manualGivenTotal"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Manual Given Total</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="manualReceivedTotal"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Manual Received Total</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="operation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Operation</FormLabel>
-                  <select
-                    className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    <option value="subtract-given-received">Given - Received</option>
-                    <option value="subtract-received-given">Received - Given</option>
-                    <option value="add">Add</option>
-                  </select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-2">
+              <FormLabel>Given Total</FormLabel>
+              <Input
+                type="number"
+                placeholder="Enter Given Total"
+                value={form.watch("manualGivenTotal") || ""}
+                onChange={(e) => form.setValue("manualGivenTotal", parseFloat(e.target.value) || 0)}
+              />
+            </div>
             
             <div className="space-y-2">
-              <FormLabel>Calculated Result</FormLabel>
+              <FormLabel>Operation</FormLabel>
+              <select
+                className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={form.watch("operation")}
+                onChange={(e) => form.setValue("operation", e.target.value as any)}
+              >
+                <option value="subtract-given-received">Subtract (Given - Received)</option>
+                <option value="subtract-received-given">Subtract (Received - Given)</option>
+                <option value="add">Add</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <FormLabel>Received Total</FormLabel>
+              <Input
+                type="number"
+                placeholder="Enter Received Total"
+                value={form.watch("manualReceivedTotal") || ""}
+                onChange={(e) => form.setValue("manualReceivedTotal", parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <FormLabel>Result</FormLabel>
               <div className="w-full h-10 flex items-center justify-center border rounded-md bg-muted/20 font-medium">
                 {calculateManualResult().toFixed(3)}
               </div>
@@ -822,7 +818,7 @@ export function AdminReceiptForm() {
           </div>
         </div>
 
-        {/* Status and Actions */}
+        {/* Cancel Button */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-4">
           <div className="flex items-center gap-2">
             <span className="font-medium">Status:</span>
@@ -838,10 +834,6 @@ export function AdminReceiptForm() {
               onClick={() => navigate("/admin-receipts")}
             >
               Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-              Save Receipt
             </Button>
           </div>
         </div>

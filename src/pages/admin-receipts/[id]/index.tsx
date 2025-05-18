@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Download } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,10 +48,10 @@ const mockReceipt = {
     total: 4.5
   },
   manualCalculation: {
-    givenTotal: 100,
-    receivedTotal: 50,
+    givenTotal: 107.57,
+    receivedTotal: 45,
     operation: "subtract-given-received",
-    result: 50
+    result: 62.57
   }
 };
 
@@ -108,27 +108,13 @@ export default function AdminReceiptDetailPage() {
     });
   };
 
-  // Helper to get status badge
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'complete':
-        return <Badge variant="default" className="bg-green-500">Complete</Badge>;
-      case 'incomplete':
-        return <Badge variant="default" className="bg-yellow-500">Incomplete</Badge>;
-      case 'empty':
-        return <Badge variant="default" className="bg-gray-400">Empty</Badge>;
-      default:
-        return <Badge variant="default" className="bg-gray-400">{status}</Badge>;
-    }
-  };
-
   // Helper for operation text
   const getOperationText = (operation) => {
     switch (operation) {
       case 'subtract-given-received':
-        return 'Given - Received';
+        return 'Subtract (Given - Received)';
       case 'subtract-received-given':
-        return 'Received - Given';
+        return 'Subtract (Received - Given)';
       case 'add':
         return 'Add';
       default:
@@ -138,191 +124,140 @@ export default function AdminReceiptDetailPage() {
 
   return (
     <div className="container py-6">
-      <div className="flex justify-between items-center mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/admin-receipts")}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Admin Receipts
-        </Button>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(`/admin-receipts/${id}/edit`)}
-          >
-            <Edit className="mr-2 h-4 w-4" /> Edit Receipt
-          </Button>
-          <Button>
-            <Download className="mr-2 h-4 w-4" /> Download PDF
-          </Button>
-        </div>
-      </div>
-      
-      <div className="mb-6">
-        <h1 className="text-3xl font-serif font-bold flex items-center gap-3">
-          Admin Receipt Details 
-          {getStatusBadge(receipt.status)}
-        </h1>
-        <p className="text-muted-foreground">
-          Viewing receipt {receipt.voucherId} • Last updated on {formatDate(receipt.updatedAt)}
-        </p>
-      </div>
-
-      {/* Client Information */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Client Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Client ID</p>
-              <p>{receipt.clientId}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Client Name</p>
-              <p>{receipt.clientName}</p>
-            </div>
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Admin Receipt View</h1>
+            <p className="text-gray-500">Client: {receipt.clientName} (ID: {receipt.clientId})</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Given Items Section */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Given Items</CardTitle>
-          <p className="text-sm text-muted-foreground">Date: {formatDate(receipt.given.date)}</p>
-        </CardHeader>
-        <CardContent>
+          <div className="flex gap-2">
+            <Button
+              variant="outline" 
+              onClick={() => navigate("/admin-receipts")}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to List
+            </Button>
+            <Button>
+              <Download className="mr-2 h-4 w-4" /> Download Receipt
+            </Button>
+          </div>
+        </div>
+        
+        <Separator className="my-6" />
+        
+        {/* Given Details Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-2">Given Details</h2>
+          <p className="text-gray-600 mb-4">Date: {formatDate(receipt.given.date)}</p>
+          
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b">
-                  <th className="py-2 px-4 text-left">S.No.</th>
-                  <th className="py-2 px-4 text-left">Product Name</th>
-                  <th className="py-2 px-4 text-right">Pure Weight</th>
-                  <th className="py-2 px-4 text-right">Pure Percent (%)</th>
-                  <th className="py-2 px-4 text-right">Melting</th>
-                  <th className="py-2 px-4 text-right">Total</th>
+                <tr className="bg-gray-50 border-b">
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">S.No.</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Product Name</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Pure Weight</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Pure %</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Melting</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {receipt.given.items.map((item, index) => (
                   <tr key={index} className="border-b">
-                    <td className="py-2 px-4">{index + 1}</td>
-                    <td className="py-2 px-4">{item.productName}</td>
-                    <td className="py-2 px-4 text-right">{item.pureWeight}</td>
-                    <td className="py-2 px-4 text-right">{item.purePercent}</td>
-                    <td className="py-2 px-4 text-right">{item.melting}</td>
-                    <td className="py-2 px-4 text-right">{item.total.toFixed(3)}</td>
+                    <td className="py-2 px-4 text-center">{index + 1}</td>
+                    <td className="py-2 px-4 text-center">{item.productName}</td>
+                    <td className="py-2 px-4 text-center">{item.pureWeight}</td>
+                    <td className="py-2 px-4 text-center">{item.purePercent}</td>
+                    <td className="py-2 px-4 text-center">{item.melting}</td>
+                    <td className="py-2 px-4 text-center">{item.total.toFixed(3)}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-muted/50">
-                <tr>
-                  <td colSpan={4} className="py-2 px-4"></td>
-                  <td className="py-2 px-4 text-right font-medium">Total Pure Weight:</td>
-                  <td className="py-2 px-4 text-right font-medium">
-                    {receipt.given.totalPureWeight.toFixed(3)}
-                  </td>
-                </tr>
-                <tr>
-                  <td colSpan={4} className="py-2 px-4"></td>
-                  <td className="py-2 px-4 text-right font-medium">Grand Total (Net):</td>
-                  <td className="py-2 px-4 text-right font-medium">
-                    {receipt.given.total.toFixed(3)}
-                  </td>
+              <tfoot>
+                <tr className="bg-gray-50">
+                  <td colSpan={5} className="py-2 px-4 text-right font-medium">Total:</td>
+                  <td className="py-2 px-4 text-center font-medium">{receipt.given.total.toFixed(3)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Received Items Section */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Received Items</CardTitle>
-          <p className="text-sm text-muted-foreground">Date: {formatDate(receipt.received.date)}</p>
-        </CardHeader>
-        <CardContent>
+        </div>
+        
+        <Separator className="my-6" />
+        
+        {/* Received Details Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-2">Received Details</h2>
+          <p className="text-gray-600 mb-4">Date: {formatDate(receipt.received.date)}</p>
+          
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b">
-                  <th className="py-2 px-4 text-left">S.No.</th>
-                  <th className="py-2 px-4 text-left">Product Name</th>
-                  <th className="py-2 px-4 text-right">Final Ornaments Wt</th>
-                  <th className="py-2 px-4 text-right">Stone Weight</th>
-                  <th className="py-2 px-4 text-right">Making Charge (%)</th>
-                  <th className="py-2 px-4 text-right">SubTotal</th>
-                  <th className="py-2 px-4 text-right">Total</th>
+                <tr className="bg-gray-50 border-b">
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">S.No.</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Product Name</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Final Ornaments (wt)</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Stone Weight</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Sub Total</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Making Charge (%)</th>
+                  <th className="py-2 px-4 text-left text-sm font-semibold text-center">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {receipt.received.items.map((item, index) => (
                   <tr key={index} className="border-b">
-                    <td className="py-2 px-4">{index + 1}</td>
-                    <td className="py-2 px-4">{item.productName}</td>
-                    <td className="py-2 px-4 text-right">{item.finalOrnamentsWt}</td>
-                    <td className="py-2 px-4 text-right">{item.stoneWeight}</td>
-                    <td className="py-2 px-4 text-right">{item.makingChargePercent}</td>
-                    <td className="py-2 px-4 text-right">{item.subTotal.toFixed(3)}</td>
-                    <td className="py-2 px-4 text-right">{item.total.toFixed(3)}</td>
+                    <td className="py-2 px-4 text-center">{index + 1}</td>
+                    <td className="py-2 px-4 text-center">{item.productName}</td>
+                    <td className="py-2 px-4 text-center">{item.finalOrnamentsWt}</td>
+                    <td className="py-2 px-4 text-center">{item.stoneWeight}</td>
+                    <td className="py-2 px-4 text-center">{item.subTotal.toFixed(3)}</td>
+                    <td className="py-2 px-4 text-center">{item.makingChargePercent}</td>
+                    <td className="py-2 px-4 text-center">{item.total.toFixed(3)}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-muted/50">
-                <tr>
-                  <td colSpan={2} className="py-2 px-4"></td>
-                  <td className="py-2 px-4 text-right font-medium">
-                    {receipt.received.totalOrnamentsWt.toFixed(3)}
-                  </td>
-                  <td className="py-2 px-4 text-right font-medium">
-                    {receipt.received.totalStoneWeight.toFixed(3)}
-                  </td>
+              <tfoot>
+                <tr className="bg-gray-50">
+                  <td colSpan={2} className="py-2 px-4 text-right font-medium">Total:</td>
+                  <td className="py-2 px-4 text-center font-medium">{receipt.received.totalOrnamentsWt.toFixed(3)}</td>
+                  <td className="py-2 px-4 text-center font-medium">{receipt.received.totalStoneWeight.toFixed(3)}</td>
+                  <td className="py-2 px-4 text-center font-medium">{receipt.received.totalSubTotal.toFixed(3)}</td>
                   <td className="py-2 px-4"></td>
-                  <td className="py-2 px-4 text-right font-medium">
-                    {receipt.received.totalSubTotal.toFixed(3)}
-                  </td>
-                  <td className="py-2 px-4 text-right font-medium">
-                    {receipt.received.total.toFixed(3)}
-                  </td>
+                  <td className="py-2 px-4 text-center font-medium">{receipt.received.total.toFixed(3)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Manual Calculation Section */}
-      {receipt.manualCalculation && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Manual Net Balance Calculation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Manual Given Total</p>
-                <p>{receipt.manualCalculation.givenTotal}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Manual Received Total</p>
-                <p>{receipt.manualCalculation.receivedTotal}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Operation</p>
-                <p>{getOperationText(receipt.manualCalculation.operation)}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Result</p>
-                <p className="font-medium">{receipt.manualCalculation.result.toFixed(3)}</p>
-              </div>
+        </div>
+        
+        <Separator className="my-6" />
+        
+        {/* Total Summary Section */}
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold mb-2">Total Summary</h2>
+          <p className="text-gray-600 mb-4">Final calculation based on Given and Received totals. This is for on-screen viewing and can be manually adjusted. This section is not saved and only for PDF output.</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
+            <div>
+              <p className="text-sm text-gray-500">Given Total</p>
+              <p className="font-medium">{receipt.manualCalculation.givenTotal.toFixed(3)}</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div>
+              <p className="text-sm text-gray-500">Operation</p>
+              <p className="font-medium">{getOperationText(receipt.manualCalculation.operation)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Received Total</p>
+              <p className="font-medium">{receipt.manualCalculation.receivedTotal.toFixed(3)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Result</p>
+              <p className="font-medium">{receipt.manualCalculation.result.toFixed(3)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
