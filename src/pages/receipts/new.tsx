@@ -9,11 +9,17 @@ export default function NewReceiptPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [client, setClient] = useState(null);
+  const [previousPath, setPreviousPath] = useState("/receipts/select-client");
 
   // Check if client data was passed via location state
   useEffect(() => {
     if (location.state?.client) {
       setClient(location.state.client);
+    }
+    
+    // Store the previous path if it exists in the state
+    if (location.state?.from) {
+      setPreviousPath(location.state.from);
     }
   }, [location]);
 
@@ -37,7 +43,7 @@ export default function NewReceiptPage() {
       </div>
 
       <div className="bg-card card-premium rounded-lg p-6">
-        <ReceiptForm client={client} />
+        <ReceiptForm client={client} previousPath={previousPath} />
       </div>
     </div>
   );

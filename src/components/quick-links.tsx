@@ -1,85 +1,59 @@
 
-import { NavLink } from "react-router-dom";
-import { Plus, FileText, Receipt, ShieldCheck, CreditCard, User, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import {
+  User, Users, FileText, Receipt, FileBarChart2, FileStack
+} from "lucide-react";
 
-interface QuickLinkProps {
-  icon: React.ReactNode;
-  label: string;
-  to: string;
-  delay?: number;
-}
+const quickLinks = [
+  {
+    title: "New Client",
+    href: "/clients/new",
+    icon: <User className="h-4 w-4" />,
+  },
+  {
+    title: "Customer Details",
+    href: "/clients",
+    icon: <Users className="h-4 w-4" />,
+  },
+  {
+    title: "Client Receipt",
+    href: "/receipts/select-client",
+    icon: <Receipt className="h-4 w-4" />,
+  },
+  {
+    title: "Client Bills",
+    href: "/receipts",
+    icon: <FileText className="h-4 w-4" />,
+  },
+  {
+    title: "Admin Receipt",
+    href: "/admin-receipts",
+    icon: <FileBarChart2 className="h-4 w-4" />,
+  },
+  {
+    title: "Admin Bill",
+    href: "/admin-bills",
+    icon: <FileStack className="h-4 w-4" />,
+  },
+];
 
-const QuickLinkItem = ({ icon, label, to, delay = 0 }: QuickLinkProps) => (
-  <motion.div
-    initial={{ x: -20, opacity: 0 }}
-    animate={{ x: 0, opacity: 1 }}
-    transition={{ delay: delay, duration: 0.3 }}
-  >
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        cn(
-          "flex items-center gap-3 rounded-md p-2 text-sm font-medium transition-all hover:bg-accent",
-          isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-        )
-      }
-    >
-      {icon}
-      <span>{label}</span>
-    </NavLink>
-  </motion.div>
-);
-
-export const QuickLinks = () => {
+export function QuickLinks() {
   return (
     <div className="px-3 py-2">
-      <motion.h3 
-        className="mb-2 px-2 text-sm font-semibold"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
+      <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
         Quick Links
-      </motion.h3>
+      </h2>
       <div className="space-y-1">
-        <QuickLinkItem
-          icon={<User className="h-4 w-4" />}
-          label="New Client"
-          to="/clients/new"
-          delay={0.1}
-        />
-        <QuickLinkItem
-          icon={<Users className="h-4 w-4" />}
-          label="Customer Details"
-          to="/clients"
-          delay={0.15}
-        />
-        <QuickLinkItem
-          icon={<Receipt className="h-4 w-4" />}
-          label="Client Receipt"
-          to="/receipts/select-client"
-          delay={0.2}
-        />
-        <QuickLinkItem
-          icon={<FileText className="h-4 w-4" />}
-          label="Client Bills"
-          to="/client-bills"
-          delay={0.3}
-        />
-        <QuickLinkItem
-          icon={<ShieldCheck className="h-4 w-4" />}
-          label="Admin Receipt"
-          to="/admin-receipts"
-          delay={0.4}
-        />
-        <QuickLinkItem
-          icon={<CreditCard className="h-4 w-4" />}
-          label="Admin Bill"
-          to="/admin-bills"
-          delay={0.5}
-        />
+        {quickLinks.map((link) => (
+          <Link
+            key={link.href}
+            to={link.href}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-foreground hover:bg-accent"
+          >
+            {link.icon}
+            <span>{link.title}</span>
+          </Link>
+        ))}
       </div>
     </div>
   );

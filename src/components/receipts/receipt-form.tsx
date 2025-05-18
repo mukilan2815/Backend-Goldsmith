@@ -44,7 +44,7 @@ const receiptItemSchema = z.object({
     .number()
     .min(0, { message: "Min 0%" })
     .max(100, { message: "Max 100%" }),
-  stoneAmount: z.number().min(0, { message: "Cannot be negative" }),
+  stoneAmount: z.number().min(0, { message: "Cannot be negative" }).optional(),
 });
 
 const receiptFormSchema = z.object({
@@ -77,9 +77,10 @@ interface ReceiptFormProps {
     address?: string;
   };
   receiptId?: string;
+  previousPath?: string;
 }
 
-export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormProps) {
+export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "/receipts/select-client" }: ReceiptFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -533,7 +534,7 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/receipts")}
+            onClick={() => navigate(previousPath)}
           >
             Cancel
           </Button>
