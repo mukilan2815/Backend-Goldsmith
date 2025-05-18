@@ -4,23 +4,23 @@ import { toast } from '@/components/ui/use-toast';
 
 // For local development, this would point to your local server
 // For production, this should point to your deployed API
-const API_URL = import.meta.env.PROD 
-  ? 'https://your-deployed-api.com/api'  // Replace with your deployed API URL
-  : 'http://localhost:5000/api';         // Local development server
+const API_URL = 'http://localhost:5000/api'; // Using localhost:5000 for backend
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  // Adding timeout to prevent long waiting periods
+  timeout: 10000,
 });
 
 // Add interceptors for better error handling and loading states
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error);
-    const message = error.response?.data?.message || 'An unexpected error occurred';
+    console.error('API Error:', error.response?.data || error.message || error);
+    const message = error.response?.data?.message || 'Connection to server failed. Please check your backend is running.';
     toast({
       title: 'Error',
       description: message,

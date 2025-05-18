@@ -6,6 +6,8 @@ const connectDB = async () => {
     // MongoDB connection string with your Atlas URI
     const mongoURI = process.env.MONGO_URI || 'mongodb+srv://Vignesh:vignesh@cluster0.6fjqe2e.mongodb.net/goldsmith?retryWrites=true&w=majority&appName=Cluster0';
     
+    console.log('Connecting to MongoDB Atlas...');
+    
     const conn = await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,

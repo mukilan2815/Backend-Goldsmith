@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Define the form schema with Zod
 const clientFormSchema = z.object({
@@ -40,6 +41,7 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isEditing = !!clientId;
 
   const form = useForm<ClientFormValues>({
@@ -55,8 +57,11 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
 
   const onSubmit = async (data: ClientFormValues) => {
     setIsSubmitting(true);
+    setErrorMessage(null);
     
     try {
+      console.log("Submitting client data:", data);
+      
       if (isEditing && clientId) {
         await clientServices.updateClient(clientId, data);
         toast({
@@ -67,7 +72,7 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
         await clientServices.createClient(data);
         toast({
           title: "Client Added",
-          description: `${data.clientName} has been successfully added.`,
+          description: `${data.clientName} has been successfully added to MongoDB Atlas.`,
         });
       }
       
@@ -75,10 +80,12 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
       navigate("/clients");
     } catch (error) {
       console.error("Error saving client:", error);
+      const message = error.response?.data?.message || error.message || "Failed to connect to server. Please ensure your backend is running.";
+      setErrorMessage(message);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.response?.data?.message || "Failed to save client. Please try again.",
+        description: message,
       });
     } finally {
       setIsSubmitting(false);
@@ -88,6 +95,12 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {errorMessage && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
