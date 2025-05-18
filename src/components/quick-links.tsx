@@ -27,7 +27,7 @@ const quickLinks = [
   },
   {
     title: "Admin Receipt",
-    href: "/admin-receipts",
+    href: "/admin-receipts/new", // Changed from "/admin-receipts" to "/admin-receipts/new"
     icon: <FileBarChart2 className="h-4 w-4" />,
   },
   {
