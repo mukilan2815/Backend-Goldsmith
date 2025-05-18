@@ -31,7 +31,7 @@ export default function NewReceiptPage() {
         <h1 className="text-3xl font-serif font-bold">Create New Receipt</h1>
         <p className="text-muted-foreground">
           {client 
-            ? `Creating receipt for ${client.clientName} (${client.shopName})`
+            ? `Creating receipt for ${client.shopName}`
             : "Create a new receipt by filling out the form below"}
         </p>
       </div>

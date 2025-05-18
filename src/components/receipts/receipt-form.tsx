@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { X, Plus, Loader, Download } from "lucide-react";
+import { Trash, Plus, Loader, Calendar } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,27 +18,42 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger, 
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { ReceiptItem } from "@/models/Receipt";
 
 // Validation schema
 const receiptItemSchema = z.object({
   description: z.string().min(1, { message: "Description is required" }),
+  tag: z.string().optional(),
   grossWeight: z.number().positive({ message: "Must be positive" }),
   stoneWeight: z.number().min(0, { message: "Cannot be negative" }),
   meltingPercent: z
     .number()
     .min(0, { message: "Min 0%" })
     .max(100, { message: "Max 100%" }),
-  rate: z.number().positive({ message: "Must be positive" }),
+  stoneAmount: z.number().min(0, { message: "Cannot be negative" }),
 });
 
 const receiptFormSchema = z.object({
-  clientName: z.string().min(1, { message: "Client name is required" }),
-  shopName: z.string().min(1, { message: "Shop name is required" }),
-  mobile: z.string().min(1, { message: "Mobile number is required" }),
-  address: z.string().optional(),
+  date: z.date({
+    required_error: "Date is required",
+  }),
   metalType: z.string().min(1, { message: "Metal type is required" }),
+  overallWeight: z.number().positive({ message: "Must be positive" }).optional(),
+  unit: z.string().optional(),
   items: z.array(receiptItemSchema).min(1, { message: "Add at least one item" }).refine(
     (items) => {
       return items.every((item) => item.stoneWeight <= item.grossWeight);
@@ -67,12 +83,13 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [voucherId, setVoucherId] = useState(`RC-${Math.floor(100000 + Math.random() * 900000)}`); // Generate random voucher ID
+  const [voucherId, setVoucherId] = useState(`RC-${Math.floor(100000 + Math.random() * 900000)}`);
   const [metalType, setMetalType] = useState("Gold");
   const [items, setItems] = useState<ReceiptItem[]>([
     {
       id: uuidv4(),
       description: "",
+      tag: "",
       grossWeight: 0,
       stoneWeight: 0,
       meltingPercent: 0,
@@ -80,16 +97,17 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
       netWeight: 0,
       finalWeight: 0,
       amount: 0,
+      stoneAmount: 0,
     },
   ]);
 
   // Initialize form with client data if provided
+  const today = new Date();
   const initialValues = defaultValues || {
-    clientName: client?.clientName || "",
-    shopName: client?.shopName || "",
-    mobile: client?.phoneNumber || "",
-    address: client?.address || "",
+    date: today,
     metalType: metalType,
+    overallWeight: 0,
+    unit: "g",
     items: items,
   };
 
@@ -102,17 +120,14 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
   const calculateDerivedValues = (
     grossWeight: number,
     stoneWeight: number,
-    meltingPercent: number,
-    rate: number
+    meltingPercent: number
   ) => {
     const netWeight = grossWeight - stoneWeight;
     const finalWeight = (netWeight * meltingPercent) / 100;
-    const amount = finalWeight * rate;
     
     return {
       netWeight,
       finalWeight,
-      amount,
     };
   };
 
@@ -121,6 +136,7 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
     const newItem: ReceiptItem = {
       id: uuidv4(),
       description: "",
+      tag: "",
       grossWeight: 0,
       stoneWeight: 0,
       meltingPercent: 0,
@@ -128,6 +144,7 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
       netWeight: 0,
       finalWeight: 0,
       amount: 0,
+      stoneAmount: 0,
     };
     
     setItems([...items, newItem]);
@@ -154,17 +171,15 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
           const updatedItem = { ...item, [field]: value };
           
           // Recalculate derived values if needed
-          if (["grossWeight", "stoneWeight", "meltingPercent", "rate"].includes(field)) {
-            const { netWeight, finalWeight, amount } = calculateDerivedValues(
+          if (["grossWeight", "stoneWeight", "meltingPercent"].includes(field)) {
+            const { netWeight, finalWeight } = calculateDerivedValues(
               field === "grossWeight" ? value : item.grossWeight,
               field === "stoneWeight" ? value : item.stoneWeight,
-              field === "meltingPercent" ? value : item.meltingPercent,
-              field === "rate" ? value : item.rate
+              field === "meltingPercent" ? value : item.meltingPercent
             );
             
             updatedItem.netWeight = netWeight;
             updatedItem.finalWeight = finalWeight;
-            updatedItem.amount = amount;
           }
           
           return updatedItem;
@@ -182,10 +197,10 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
         stoneWeight: acc.stoneWeight + item.stoneWeight,
         netWeight: acc.netWeight + item.netWeight,
         finalWeight: acc.finalWeight + item.finalWeight,
-        amount: acc.amount + item.amount,
+        stoneAmount: acc.stoneAmount + (item.stoneAmount || 0),
       };
     },
-    { grossWeight: 0, stoneWeight: 0, netWeight: 0, finalWeight: 0, amount: 0 }
+    { grossWeight: 0, stoneWeight: 0, netWeight: 0, finalWeight: 0, stoneAmount: 0 }
   );
 
   // Handle form submission
@@ -199,19 +214,23 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
         voucherId: voucherId,
         clientId: client?.id || uuidv4(),
         clientInfo: {
-          name: formData.clientName,
-          shopName: formData.shopName,
-          phoneNumber: formData.mobile,
-          address: formData.address || "",
+          name: client?.clientName || "",
+          shopName: client?.shopName || "",
+          phoneNumber: client?.phoneNumber || "",
+          address: client?.address || "",
         },
-        metalType: formData.metalType || metalType,
-        items: items.map((item) => ({
+        date: formData.date,
+        metalType: formData.metalType,
+        overallWeight: formData.overallWeight,
+        unit: formData.unit,
+        items: items.map((item, index) => ({
+          sNo: index + 1,
           itemName: item.description,
-          tag: "",  // Optional tag field
+          tag: item.tag || "",
           grossWt: item.grossWeight,
           stoneWt: item.stoneWeight,
           meltingTouch: item.meltingPercent,
-          stoneAmt: 0, // Default to 0 for now
+          stoneAmt: item.stoneAmount || 0,
           netWt: item.netWeight,
           finalWt: item.finalWeight,
         })),
@@ -220,9 +239,9 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
           stoneWt: totals.stoneWeight,
           netWt: totals.netWeight,
           finalWt: totals.finalWeight,
-          stoneAmt: 0, // Default to 0 for now
+          stoneAmt: totals.stoneAmount,
         },
-        issueDate: new Date().toISOString(),
+        issueDate: formData.date.toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -257,19 +276,10 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
     }
   };
 
-  // Generate PDF
-  const generatePDF = () => {
-    toast({
-      title: "PDF Generation",
-      description: "PDF download functionality will be implemented soon.",
-    });
-    // PDF generation logic will be implemented in a separate function
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Voucher ID */}
+        {/* Receipt Details */}
         <div className="bg-background/50 p-6 rounded-md border">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium">Receipt Details</h3>
@@ -278,95 +288,116 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
             </div>
           </div>
 
-          {/* Metal Type */}
-          <div className="mb-6">
-            <FormLabel>Metal Type</FormLabel>
-            <div className="flex gap-2">
-              {["Gold", "Silver", "Platinum"].map((type) => (
-                <Button
-                  key={type}
-                  type="button"
-                  variant={metalType === type ? "default" : "outline"}
-                  onClick={() => setMetalType(type)}
-                >
-                  {type}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Date */}
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        {/* Client Information */}
-        <div className="bg-background/50 p-6 rounded-md border">
-          <h3 className="text-lg font-medium mb-4">Client Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Metal Type */}
             <FormField
               control={form.control}
-              name="clientName"
+              name="metalType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Client Name</FormLabel>
+                  <FormLabel>Select Metal Type</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select metal type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Platinum">Platinum</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Overall Weight */}
+            <FormField
+              control={form.control}
+              name="overallWeight"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Overall Weight</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Client name"
+                    <Input
+                      type="number"
+                      placeholder="Overall weight"
                       {...field}
-                      readOnly={!!client} 
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
+            {/* Unit */}
             <FormField
               control={form.control}
-              name="shopName"
+              name="unit"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Shop Name</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Shop name"
-                      {...field}
-                      readOnly={!!client} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="mobile"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mobile</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Mobile number"
-                      {...field}
-                      readOnly={!!client} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Address"
-                      {...field}
-                      readOnly={!!client} 
-                    />
-                  </FormControl>
+                  <FormLabel>Unit</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="mg">mg</SelectItem>
+                      <SelectItem value="g">g</SelectItem>
+                      <SelectItem value="ct">ct</SelectItem>
+                      <SelectItem value="kg">kg</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -389,77 +420,84 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2 px-1 text-sm font-medium">Description</th>
-                  <th className="text-right py-2 px-1 text-sm font-medium">Gross Wt (g)</th>
-                  <th className="text-right py-2 px-1 text-sm font-medium">Stone Wt (g)</th>
-                  <th className="text-right py-2 px-1 text-sm font-medium">Melting %</th>
-                  <th className="text-right py-2 px-1 text-sm font-medium">Rate (₹/g)</th>
-                  <th className="text-right py-2 px-1 text-sm font-medium">Net Wt (g)</th>
-                  <th className="text-right py-2 px-1 text-sm font-medium">Final Wt (g)</th>
-                  <th className="text-right py-2 px-1 text-sm font-medium">Amount (₹)</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">S.No.</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">Item Name</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">Tag</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">Gross (wt)</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">Stone (wt)</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">Net (wt)</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">M/T (%)</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">Final (wt)</th>
+                  <th className="py-2 px-2 text-sm font-medium text-center">Stone Amt</th>
                   <th className="w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, index) => (
                   <tr key={item.id} className="border-b last:border-b-0">
-                    <td className="py-2 px-1">
+                    <td className="py-2 px-2 text-center">{index + 1}</td>
+                    <td className="py-2 px-2">
                       <Input
                         value={item.description}
                         onChange={(e) => updateItem(item.id, "description", e.target.value)}
                         placeholder="Item description"
-                        className="border-0 bg-transparent p-1 h-8 focus-visible:ring-0"
+                        className="bg-card border border-input"
                       />
                     </td>
-                    <td className="py-2 px-1">
+                    <td className="py-2 px-2">
+                      <Input
+                        value={item.tag || ""}
+                        onChange={(e) => updateItem(item.id, "tag", e.target.value)}
+                        placeholder="Tag"
+                        className="bg-card border border-input"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
                       <Input
                         type="number"
                         value={item.grossWeight}
                         onChange={(e) => updateItem(item.id, "grossWeight", parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="border-0 bg-transparent p-1 h-8 focus-visible:ring-0 text-right"
+                        className="bg-card border border-input text-center"
                       />
                     </td>
-                    <td className="py-2 px-1">
+                    <td className="py-2 px-2">
                       <Input
                         type="number"
                         value={item.stoneWeight}
                         onChange={(e) => updateItem(item.id, "stoneWeight", parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="border-0 bg-transparent p-1 h-8 focus-visible:ring-0 text-right"
+                        className="bg-card border border-input text-center"
                       />
                     </td>
-                    <td className="py-2 px-1">
+                    <td className="py-2 px-2 text-center">
+                      {item.netWeight.toFixed(2)}
+                    </td>
+                    <td className="py-2 px-2">
                       <Input
                         type="number"
                         value={item.meltingPercent}
                         onChange={(e) => updateItem(item.id, "meltingPercent", parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="border-0 bg-transparent p-1 h-8 focus-visible:ring-0 text-right"
+                        className="bg-card border border-input text-center"
                       />
                     </td>
-                    <td className="py-2 px-1">
+                    <td className="py-2 px-2 text-center">
+                      {item.finalWeight.toFixed(3)}
+                    </td>
+                    <td className="py-2 px-2">
                       <Input
                         type="number"
-                        value={item.rate}
-                        onChange={(e) => updateItem(item.id, "rate", parseFloat(e.target.value) || 0)}
+                        value={item.stoneAmount || 0}
+                        onChange={(e) => updateItem(item.id, "stoneAmount", parseFloat(e.target.value) || 0)}
                         placeholder="0.00"
-                        className="border-0 bg-transparent p-1 h-8 focus-visible:ring-0 text-right"
+                        className="bg-card border border-input text-center"
                       />
                     </td>
-                    <td className="py-2 px-1 text-right">
-                      {item.netWeight.toFixed(2)}
-                    </td>
-                    <td className="py-2 px-1 text-right">
-                      {item.finalWeight.toFixed(2)}
-                    </td>
-                    <td className="py-2 px-1 text-right">
-                      {item.amount.toFixed(2)}
-                    </td>
-                    <td className="py-2 px-1">
+                    <td className="py-2 px-2">
                       <Button
                         type="button"
                         variant="ghost"
@@ -468,7 +506,7 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
                         className="h-8 w-8 p-0"
                         disabled={items.length === 1}
                       >
-                        <X className="h-4 w-4" />
+                        <Trash className="h-4 w-4 text-destructive" />
                       </Button>
                     </td>
                   </tr>
@@ -476,15 +514,14 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
                 
                 {/* Totals Row */}
                 <tr className="font-medium bg-accent/20">
-                  <td className="py-2 px-1 text-left">Totals</td>
-                  <td className="py-2 px-1 text-right">{totals.grossWeight.toFixed(2)}</td>
-                  <td className="py-2 px-1 text-right">{totals.stoneWeight.toFixed(2)}</td>
-                  <td className="py-2 px-1"></td>
-                  <td className="py-2 px-1"></td>
-                  <td className="py-2 px-1 text-right">{totals.netWeight.toFixed(2)}</td>
-                  <td className="py-2 px-1 text-right">{totals.finalWeight.toFixed(2)}</td>
-                  <td className="py-2 px-1 text-right">{totals.amount.toFixed(2)}</td>
-                  <td className="py-2 px-1"></td>
+                  <td className="py-2 px-2 text-right" colSpan={3}>Totals</td>
+                  <td className="py-2 px-2 text-center">{totals.grossWeight.toFixed(2)}</td>
+                  <td className="py-2 px-2 text-center">{totals.stoneWeight.toFixed(2)}</td>
+                  <td className="py-2 px-2 text-center">{totals.netWeight.toFixed(2)}</td>
+                  <td className="py-2 px-2"></td>
+                  <td className="py-2 px-2 text-center">{totals.finalWeight.toFixed(3)}</td>
+                  <td className="py-2 px-2 text-center">{totals.stoneAmount.toFixed(2)}</td>
+                  <td className="py-2 px-2"></td>
                 </tr>
               </tbody>
             </table>
@@ -503,10 +540,9 @@ export function ReceiptForm({ defaultValues, client, receiptId }: ReceiptFormPro
           <Button
             type="button"
             variant="outline"
-            onClick={generatePDF}
+            onClick={() => navigate(-1)}
           >
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
+            Back
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
