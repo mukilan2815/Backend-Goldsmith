@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // MongoDB connection string with the provided Atlas URI
+    // Use the correct MongoDB Atlas URI
     const mongoURI = 'mongodb+srv://Vignesh:vignesh@cluster0.6fjqe2e.mongodb.net/goldsmith?retryWrites=true&w=majority&appName=Cluster0';
     
     console.log('Connecting to MongoDB Atlas...');
@@ -34,7 +34,8 @@ const connectDB = async () => {
     
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error.message}`);
-    process.exit(1);
+    // Don't exit the process on error to allow for reconnection attempts
+    console.error('Will retry connection automatically');
   }
 };
 

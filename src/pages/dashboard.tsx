@@ -1,11 +1,13 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   FileSpreadsheet,
   Weight,
   FileText,
   Calendar,
+  Loader,
+  AlertCircle
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
@@ -20,9 +22,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { analyticsServices } from "@/services/api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState("this-month");
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activityFilter, setActivityFilter] = useState("all");
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log("Fetching dashboard statistics");
+        const data = await analyticsServices.getDashboardStats();
+        console.log("Dashboard stats received:", data);
+        
+        if (data && data.stats) {
+          setDashboardData(data);
+        } else {
+          throw new Error("Invalid data format received");
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        setError("Failed to load dashboard data. Please check your connection and try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Handle date range change
+  const handleDateRangeChange = (value) => {
+    setDateRange(value);
+    // In a more complete implementation, this would refresh the data with new date range
+  };
 
   return (
     <div className="container py-6">
@@ -34,7 +74,7 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="mt-4 md:mt-0">
-          <Select value={dateRange} onValueChange={setDateRange}>
+          <Select value={dateRange} onValueChange={handleDateRangeChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select date range" />
             </SelectTrigger>
@@ -49,36 +89,54 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          title="Total Clients"
-          value="124"
-          description="Active clients"
-          icon={<Users className="h-4 w-4" />}
-          trend={{ value: 12, isPositive: true }}
-        />
-        <StatCard
-          title="Total Receipts"
-          value="348"
-          description="All receipts"
-          icon={<FileText className="h-4 w-4" />}
-          trend={{ value: 8, isPositive: true }}
-        />
-        <StatCard
-          title="Admin Receipts"
-          value="156"
-          description="Special receipts"
-          icon={<FileSpreadsheet className="h-4 w-4" />}
-          trend={{ value: 5, isPositive: true }}
-        />
-        <StatCard
-          title="Total Weight"
-          value="1,450 g"
-          description="Gold processed"
-          icon={<Weight className="h-4 w-4" />}
-          trend={{ value: 3, isPositive: false }}
-        />
+        {loading ? (
+          <>
+            {Array(4).fill(0).map((_, i) => (
+              <div key={i} className="h-32 bg-card animate-pulse rounded-lg"></div>
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Total Clients"
+              value={dashboardData?.stats.totalClients.value || "0"}
+              description="Active clients"
+              icon={<Users className="h-4 w-4" />}
+              trend={dashboardData?.stats.totalClients.trend || { value: 0, isPositive: true }}
+            />
+            <StatCard
+              title="Total Receipts"
+              value={dashboardData?.stats.totalReceipts.value || "0"}
+              description="All receipts"
+              icon={<FileText className="h-4 w-4" />}
+              trend={dashboardData?.stats.totalReceipts.trend || { value: 0, isPositive: true }}
+            />
+            <StatCard
+              title="Admin Receipts"
+              value={dashboardData?.stats.adminReceipts.value || "0"}
+              description="Special receipts"
+              icon={<FileSpreadsheet className="h-4 w-4" />}
+              trend={dashboardData?.stats.adminReceipts.trend || { value: 0, isPositive: true }}
+            />
+            <StatCard
+              title="Total Weight"
+              value={dashboardData?.stats.totalWeight.value || "0 g"}
+              description="Gold processed"
+              icon={<Weight className="h-4 w-4" />}
+              trend={dashboardData?.stats.totalWeight.trend || { value: 0, isPositive: true }}
+            />
+          </>
+        )}
       </div>
 
       {/* Charts */}
@@ -95,7 +153,7 @@ export default function Dashboard() {
       <div className="bg-card card-premium rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-serif font-medium">Recent Activity</h2>
-          <Select defaultValue="all">
+          <Select value={activityFilter} onValueChange={setActivityFilter}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
@@ -109,35 +167,40 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
-          {/* Activity Item */}
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 p-3 rounded-md hover:bg-accent/50 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
-                {i % 2 === 0 ? (
-                  <FileText className="h-5 w-5 text-gold" />
-                ) : (
-                  <Users className="h-5 w-5 text-gold" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {i % 2 === 0
-                    ? `New receipt created for Client #${i * 10}`
-                    : `New client added: Client #${i * 10}`}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {i % 2 === 0 ? "Receipt #1234" : "By Admin"}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Today</span>
-              </div>
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ))}
+          ) : dashboardData?.recentActivity && dashboardData.recentActivity.length > 0 ? (
+            dashboardData.recentActivity.map((activity, i) => (
+              <div
+                key={activity._id || i}
+                className="flex items-center gap-4 p-3 rounded-md hover:bg-accent/50 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-gold" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    Receipt #{activity.voucherId} - {activity.clientInfo?.clientName || 'Unknown Client'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {activity.metalType} - {activity.totals?.grossWt || 0}g
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(activity.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-muted-foreground py-8">
+              No recent activity found
+            </div>
+          )}
         </div>
       </div>
     </div>
