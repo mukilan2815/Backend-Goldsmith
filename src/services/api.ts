@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 import { toast } from "@/hooks/use-toast";
 
@@ -155,12 +156,45 @@ export const receiptServices = {
   createReceipt: async (receiptData) => {
     try {
       console.log('Sending receipt data to server:', JSON.stringify(receiptData));
-      // Make sure we're sending proper JSON formatted data
-      const response = await api.post('/receipts', receiptData, {
+      
+      // Ensure data is properly formatted for the backend
+      const formattedData = {
+        clientId: receiptData.clientId,
+        clientInfo: {
+          clientName: receiptData.clientName || "",
+          shopName: receiptData.shopName || "",
+          phoneNumber: receiptData.phoneNumber || ""
+        },
+        metalType: receiptData.metalType,
+        overallWeight: parseFloat(receiptData.overallWeight || 0),
+        issueDate: receiptData.issueDate || new Date(),
+        items: receiptData.tableData?.map(item => ({
+          itemName: item.itemName || "",
+          tag: item.tag || "",
+          grossWt: parseFloat(item.grossWt) || 0,
+          stoneWt: parseFloat(item.stoneWt) || 0,
+          meltingTouch: parseFloat(item.meltingTouch) || 0,
+          stoneAmt: parseFloat(item.stoneAmt) || 0
+        })) || [],
+        voucherId: receiptData.voucherId,
+        totals: {
+          grossWt: parseFloat(receiptData.totals?.grossWt) || 0,
+          stoneWt: parseFloat(receiptData.totals?.stoneWt) || 0,
+          netWt: parseFloat(receiptData.totals?.netWt) || 0,
+          finalWt: parseFloat(receiptData.totals?.finalWt) || 0,
+          stoneAmt: parseFloat(receiptData.totals?.stoneAmt) || 0
+        }
+      };
+      
+      console.log('Formatted receipt data:', JSON.stringify(formattedData));
+      
+      const response = await api.post('/receipts', formattedData, {
         headers: {
           'Content-Type': 'application/json'
         }
       });
+      
+      console.log('Receipt creation successful:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error creating receipt:', error);

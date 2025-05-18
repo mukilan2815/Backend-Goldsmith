@@ -124,12 +124,14 @@ const createReceipt = asyncHandler(async (req, res) => {
   const { 
     clientId, 
     clientName, 
+    clientInfo,
     shopName, 
     phoneNumber, 
     metalType, 
     overallWeight,
     issueDate, 
     tableData, 
+    items,
     totals, 
     notes, 
     deliveryDate,
@@ -164,27 +166,46 @@ const createReceipt = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Map items from tableData format to the expected model format
-    const items = tableData?.map(item => ({
-      itemName: item.itemName,
-      tag: item.tag || "",
-      grossWt: parseFloat(item.grossWt) || 0,
-      stoneWt: parseFloat(item.stoneWt) || 0,
-      meltingTouch: parseFloat(item.meltingTouch) || 0,
-      stoneAmt: parseFloat(item.stoneAmt) || 0,
-    })) || [];
+    // Handle both formats - tableData array or items array
+    let receiptItems;
+    if (tableData && Array.isArray(tableData)) {
+      // Map items from tableData format to the expected model format
+      receiptItems = tableData.map(item => ({
+        itemName: item.itemName,
+        tag: item.tag || "",
+        grossWt: parseFloat(item.grossWt) || 0,
+        stoneWt: parseFloat(item.stoneWt) || 0,
+        meltingTouch: parseFloat(item.meltingTouch) || 0,
+        stoneAmt: parseFloat(item.stoneAmt) || 0,
+      }));
+    } else if (items && Array.isArray(items)) {
+      // Map items from the frontend format to the expected model format
+      receiptItems = items.map(item => ({
+        itemName: item.description || item.itemName,
+        tag: item.tag || "",
+        grossWt: parseFloat(item.grossWeight || item.grossWt) || 0,
+        stoneWt: parseFloat(item.stoneWeight || item.stoneWt) || 0,
+        meltingTouch: parseFloat(item.meltingPercent || item.meltingTouch) || 0,
+        stoneAmt: parseFloat(item.stoneAmount || item.stoneAmt) || 0,
+      }));
+    } else {
+      receiptItems = [];
+    }
+
+    // Prepare client info from either format
+    const clientInfoData = clientInfo || {
+      clientName: clientName || (client?.clientName || ""),
+      shopName: shopName || (client?.shopName || ""),
+      phoneNumber: phoneNumber || (client?.phoneNumber || ""),
+    };
 
     const receiptData = {
       clientId,
-      clientInfo: {
-        clientName: clientName || (client?.clientName || ""),
-        shopName: shopName || (client?.shopName || ""),
-        phoneNumber: phoneNumber || (client?.phoneNumber || ""),
-      },
+      clientInfo: clientInfoData,
       metalType,
       overallWeight: parseFloat(overallWeight) || 0,
       issueDate: issueDate || new Date(),
-      items: items,
+      items: receiptItems,
       voucherId: finalVoucherId,
       notes,
       deliveryDate,
