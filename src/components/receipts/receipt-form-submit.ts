@@ -1,6 +1,6 @@
 
 import { toast } from "@/hooks/use-toast";
-import { receiptServices } from "@/services/api";
+import { receiptServices } from "@/services/receipt-services";
 import { ReceiptItem } from "@/models/Receipt";
 
 export interface ReceiptFormData {
