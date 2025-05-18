@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 import { toast } from '@/components/ui/use-toast';
 
@@ -18,6 +19,7 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('API Error:', error.response?.data || error);
     const message = error.response?.data?.message || 'An unexpected error occurred';
     toast({
       title: 'Error',
@@ -31,8 +33,8 @@ api.interceptors.response.use(
 // Client services
 export const clientServices = {
   // Get all clients
-  getClients: async () => {
-    const response = await api.get('/clients');
+  getClients: async (params = {}) => {
+    const response = await api.get('/clients', { params });
     return response.data;
   },
   
@@ -44,7 +46,9 @@ export const clientServices = {
   
   // Create new client
   createClient: async (clientData: any) => {
+    console.log('Creating client with data:', clientData);
     const response = await api.post('/clients', clientData);
+    console.log('Client created response:', response.data);
     return response.data;
   },
   

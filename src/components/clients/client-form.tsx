@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { clientServices } from "@/services/api";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,15 +22,11 @@ import { Loader } from "lucide-react";
 
 // Define the form schema with Zod
 const clientFormSchema = z.object({
-  shopName: z.string().min(1, { message: "Shop name is required" }),
+  shopName: z.string().optional(),
   clientName: z.string().min(1, { message: "Client name is required" }),
-  phoneNumber: z
-    .string()
-    .min(1, { message: "Phone number is required" })
-    .regex(/^\d{3}-\d{3}-\d{4}$/, {
-      message: "Phone must be in format: 123-456-7890",
-    }),
-  address: z.string().min(1, { message: "Address is required" }),
+  phoneNumber: z.string().optional(),
+  address: z.string().optional(),
+  email: z.string().optional(),
 });
 
 type ClientFormValues = z.infer<typeof clientFormSchema>;
@@ -52,6 +49,7 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
       clientName: "",
       phoneNumber: "",
       address: "",
+      email: "",
     },
   });
 
@@ -59,21 +57,28 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: isEditing ? "Client Updated" : "Client Added",
-        description: `${data.clientName} has been successfully ${isEditing ? "updated" : "added"}.`,
-      });
+      if (isEditing && clientId) {
+        await clientServices.updateClient(clientId, data);
+        toast({
+          title: "Client Updated",
+          description: `${data.clientName} has been successfully updated.`,
+        });
+      } else {
+        await clientServices.createClient(data);
+        toast({
+          title: "Client Added",
+          description: `${data.clientName} has been successfully added.`,
+        });
+      }
       
       // Navigate back to clients list
       navigate("/clients");
     } catch (error) {
+      console.error("Error saving client:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error.response?.data?.message || "Failed to save client. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -117,7 +122,20 @@ export function ClientForm({ defaultValues, clientId }: ClientFormProps) {
               <FormItem>
                 <FormLabel>Phone Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="Format: 123-456-7890" {...field} />
+                  <Input placeholder="Enter phone number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter email address (optional)" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
