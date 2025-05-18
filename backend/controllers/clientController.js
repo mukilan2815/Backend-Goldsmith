@@ -1,4 +1,3 @@
-
 const Client = require('../models/clientModel');
 const Receipt = require('../models/receiptModel');
 const asyncHandler = require('express-async-handler');
@@ -53,6 +52,8 @@ const getClientById = asyncHandler(async (req, res) => {
 // @access  Public
 const createClient = asyncHandler(async (req, res) => {
   const { shopName, clientName, phoneNumber, address, email } = req.body;
+  
+  console.log('Creating new client:', req.body);
 
   // Validate required fields
   if (!clientName || clientName.trim() === '') {
@@ -60,28 +61,37 @@ const createClient = asyncHandler(async (req, res) => {
     throw new Error('Client name is required');
   }
 
-  // Check if client with same phone number already exists
-  if (phoneNumber && phoneNumber.trim() !== '') {
-    const clientExists = await Client.findOne({ phoneNumber });
-    if (clientExists) {
-      res.status(400);
-      throw new Error('Client with this phone number already exists');
+  try {
+    // Check if client with same phone number already exists
+    if (phoneNumber && phoneNumber.trim() !== '') {
+      const clientExists = await Client.findOne({ phoneNumber });
+      if (clientExists) {
+        res.status(400);
+        throw new Error('Client with this phone number already exists');
+      }
     }
-  }
 
-  const client = await Client.create({
-    shopName: shopName || '',
-    clientName,
-    phoneNumber: phoneNumber || '',
-    address: address || '',
-    email: email || '',
-  });
+    const client = await Client.create({
+      shopName: shopName || '',
+      clientName,
+      phoneNumber: phoneNumber || '',
+      address: address || '',
+      email: email || '',
+    });
 
-  if (client) {
-    res.status(201).json(client);
-  } else {
-    res.status(400);
-    throw new Error('Invalid client data');
+    if (client) {
+      console.log('Client created successfully:', client);
+      res.status(201).json(client);
+    } else {
+      res.status(400);
+      throw new Error('Invalid client data');
+    }
+  } catch (error) {
+    console.error('Error creating client:', error);
+    res.status(500).json({
+      message: `Failed to create client: ${error.message}`,
+      stack: process.env.NODE_ENV === 'production' ? null : error.stack,
+    });
   }
 });
 

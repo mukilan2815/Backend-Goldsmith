@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // MongoDB connection string with your Atlas URI
-    const mongoURI = process.env.MONGO_URI || 'mongodb+srv://Vignesh:vignesh@cluster0.6fjqe2e.mongodb.net/goldsmith?retryWrites=true&w=majority&appName=Cluster0';
+    // MongoDB connection string with the provided Atlas URI
+    const mongoURI = 'mongodb+srv://Vignesh:vignesh@cluster0.6fjqe2e.mongodb.net/goldsmith?retryWrites=true&w=majority&appName=Cluster0';
     
     console.log('Connecting to MongoDB Atlas...');
     
@@ -12,7 +12,7 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       retryWrites: true,
-      connectTimeoutMS: 10000, // 10 seconds
+      connectTimeoutMS: 30000, // 30 seconds
       socketTimeoutMS: 45000,   // 45 seconds
       maxPoolSize: 50,          // Maintain up to 50 socket connections
     });

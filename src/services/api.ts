@@ -1,31 +1,48 @@
-
 import axios from 'axios';
-import { toast } from '@/components/ui/use-toast';
+import { useToast, toast } from "@/hooks/use-toast";
 
 // For local development, this would point to your local server
-// For production, this should point to your deployed API
-const API_URL = 'http://localhost:5000/api'; // Using localhost:5000 for backend
+const API_URL = 'http://localhost:5000/api'; 
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  // Adding timeout to prevent long waiting periods
-  timeout: 10000,
+  // Increasing timeout for slower connections
+  timeout: 30000, // 30 seconds
 });
 
 // Add interceptors for better error handling and loading states
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message || error);
-    const message = error.response?.data?.message || 'Connection to server failed. Please check your backend is running.';
-    toast({
-      title: 'Error',
-      description: message,
-      variant: 'destructive',
+    console.error('API Error Details:', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+      status: error.response?.status
     });
+    
+    let errorMessage = 'Connection to server failed. Please check your backend is running.';
+    
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+    } else if (error.request) {
+      // The request was made but no response was received
+      errorMessage = 'No response from server. Please check if your backend server is running.';
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      errorMessage = `Request error: ${error.message}`;
+    }
+    
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: errorMessage,
+    });
+    
     return Promise.reject(error);
   }
 );
@@ -34,8 +51,13 @@ api.interceptors.response.use(
 export const clientServices = {
   // Get all clients
   getClients: async (params = {}) => {
-    const response = await api.get('/clients', { params });
-    return response.data;
+    try {
+      const response = await api.get('/clients', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      throw error;
+    }
   },
   
   // Get client by ID
@@ -47,9 +69,14 @@ export const clientServices = {
   // Create new client
   createClient: async (clientData: any) => {
     console.log('Creating client with data:', clientData);
-    const response = await api.post('/clients', clientData);
-    console.log('Client created response:', response.data);
-    return response.data;
+    try {
+      const response = await api.post('/clients', clientData);
+      console.log('Client created response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error in createClient:', error);
+      throw error;
+    }
   },
   
   // Update client

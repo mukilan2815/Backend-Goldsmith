@@ -17,10 +17,10 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+
+// Configure CORS to allow requests from any origin during development
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-frontend-domain.com'] // Update with your frontend domain
-    : 'http://localhost:3000', 
+  origin: '*', // Allow all origins in development
   credentials: true
 }));
 
