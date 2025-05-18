@@ -213,11 +213,11 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
   const totals = items.reduce(
     (acc, item) => {
       return {
-        grossWeight: acc.grossWeight + item.grossWeight,
-        stoneWeight: acc.stoneWeight + item.stoneWeight,
-        netWeight: acc.netWeight + item.netWeight,
-        finalWeight: acc.finalWeight + item.finalWeight,
-        stoneAmount: acc.stoneAmount + (item.stoneAmount || 0),
+        grossWeight: acc.grossWeight + (Number(item.grossWeight) || 0),
+        stoneWeight: acc.stoneWeight + (Number(item.stoneWeight) || 0),
+        netWeight: acc.netWeight + (Number(item.netWeight) || 0),
+        finalWeight: acc.finalWeight + (Number(item.finalWeight) || 0),
+        stoneAmount: acc.stoneAmount + (Number(item.stoneAmount) || 0),
       };
     },
     { grossWeight: 0, stoneWeight: 0, netWeight: 0, finalWeight: 0, stoneAmount: 0 }
@@ -225,6 +225,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
 
   // Handle form submission
   const onSubmit = async (formData: ReceiptFormValues) => {
+    console.log("Form submission started", { formData, client, items });
     setIsSubmitting(true);
     
     try {
@@ -245,7 +246,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
         shopName: client.shopName || "",
         phoneNumber: client.phoneNumber || "",
         metalType: formData.metalType,
-        overallWeight: formData.overallWeight || overallWeight,
+        overallWeight: parseFloat(formData.overallWeight?.toString() || overallWeight.toString()),
         issueDate: formData.date,
         tableData: items.map((item) => ({
           itemName: item.description,
@@ -265,10 +266,11 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
         },
       };
 
-      console.log("Saving receipt data:", receiptData);
+      console.log("Saving receipt data:", JSON.stringify(receiptData));
 
-      // Send data to the server
+      // Send data to the server with explicit conversion to JSON
       const result = await receiptServices.createReceipt(receiptData);
+      console.log("Receipt creation result:", result);
       
       toast({
         title: "Receipt Created",
@@ -282,7 +284,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save receipt. Please try again.",
+        description: `Failed to save receipt: ${error.message || "Unknown error"}`,
       });
     } finally {
       setIsSubmitting(false);
@@ -565,7 +567,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
             Back
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
             Save Receipt
           </Button>
         </div>

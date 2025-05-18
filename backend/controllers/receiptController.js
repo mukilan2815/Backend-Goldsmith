@@ -119,7 +119,7 @@ const getReceiptsByClientId = asyncHandler(async (req, res) => {
 // @route   POST /api/receipts
 // @access  Public
 const createReceipt = asyncHandler(async (req, res) => {
-  console.log("Received receipt data:", req.body);
+  console.log("Received receipt data:", JSON.stringify(req.body));
   
   const { 
     clientId, 
@@ -141,7 +141,7 @@ const createReceipt = asyncHandler(async (req, res) => {
   if (clientId) {
     try {
       client = await Client.findById(clientId);
-      if (!client && clientId !== 'temp-id') {
+      if (!client && clientId !== 'temp-id' && !clientId.includes('temp-')) {
         res.status(404);
         throw new Error('Client not found');
       }
@@ -200,7 +200,7 @@ const createReceipt = asyncHandler(async (req, res) => {
       })
     };
 
-    console.log("Creating receipt with data:", receiptData);
+    console.log("Creating receipt with data:", JSON.stringify(receiptData));
     const receipt = await Receipt.create(receiptData);
 
     if (receipt) {

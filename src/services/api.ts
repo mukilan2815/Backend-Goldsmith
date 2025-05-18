@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { toast } from "@/hooks/use-toast";
 
@@ -155,8 +154,13 @@ export const receiptServices = {
   // Create new receipt
   createReceipt: async (receiptData) => {
     try {
-      console.log('Sending receipt data to server:', receiptData);
-      const response = await api.post('/receipts', receiptData);
+      console.log('Sending receipt data to server:', JSON.stringify(receiptData));
+      // Make sure we're sending proper JSON formatted data
+      const response = await api.post('/receipts', receiptData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Error creating receipt:', error);
