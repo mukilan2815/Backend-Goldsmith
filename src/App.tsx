@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +25,8 @@ import ClientSelectionPage from "./pages/receipts/select-client";
 
 // Import our implemented pages
 import AdminReceiptsPage from "./pages/admin-receipts";
+import NewAdminReceiptPage from "./pages/admin-receipts/new";
+import AdminReceiptDetailPage from "./pages/admin-receipts/[id]/index";
 import AdminBillsPage from "./pages/admin-bills";
 import ClientBillsPage from "./pages/client-bills";
 
@@ -56,6 +59,8 @@ const App = () => (
               
               {/* Add the implemented routes */}
               <Route path="admin-receipts" element={<AdminReceiptsPage />} />
+              <Route path="admin-receipts/new" element={<NewAdminReceiptPage />} />
+              <Route path="admin-receipts/:id" element={<AdminReceiptDetailPage />} />
               <Route path="admin-bills" element={<AdminBillsPage />} />
               <Route path="client-bills" element={<ClientBillsPage />} />
               

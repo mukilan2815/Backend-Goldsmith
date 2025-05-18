@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 // Mock data for demo
@@ -20,38 +19,38 @@ const mockReceipt = {
     date: new Date().toISOString(),
     items: [
       {
-        productName: "Gold Bar",
-        pureWeight: "100",
-        purePercent: "99.5",
-        melting: "92.5",
-        total: 107.57
+        productName: "gls",
+        pureWeight: "9732.000",
+        purePercent: "90943.00",
+        melting: "8.00",
+        total: 110632159.500
       }
     ],
-    totalPureWeight: 99.5,
-    total: 107.57
+    totalPureWeight: 9732.000,
+    total: 110632159.500
   },
   received: {
-    date: new Date().toISOString(),
+    date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), // next day
     items: [
       {
-        productName: "Gold Ring",
-        finalOrnamentsWt: "50",
-        stoneWeight: "5",
-        makingChargePercent: "10",
-        subTotal: 45,
-        total: 4.5
+        productName: "kjd",
+        finalOrnamentsWt: "9823.000",
+        stoneWeight: "93.000",
+        makingChargePercent: "93.00",
+        subTotal: 9730.000,
+        total: 9048.900
       }
     ],
-    totalOrnamentsWt: 50,
-    totalStoneWeight: 5,
-    totalSubTotal: 45,
-    total: 4.5
+    totalOrnamentsWt: 9823.000,
+    totalStoneWeight: 93.000,
+    totalSubTotal: 9730.000,
+    total: 9048.900
   },
   manualCalculation: {
-    givenTotal: 107.57,
-    receivedTotal: 45,
+    givenTotal: 110632159.500,
+    receivedTotal: 9048.900,
     operation: "subtract-given-received",
-    result: 62.57
+    result: 110623110.600
   }
 };
 
