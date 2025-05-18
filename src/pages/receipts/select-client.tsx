@@ -1,7 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Search, UserPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,59 +12,42 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Mock data for clients
-const initialClients = [
-  {
-    id: "1",
-    name: "John Smith",
-    shopName: "Golden Creations",
-    mobile: "555-123-4567",
-    address: "123 Jewel Street, Diamond City",
-  },
-  {
-    id: "2",
-    name: "Sarah Johnson",
-    shopName: "Silver Linings",
-    mobile: "555-987-6543",
-    address: "456 Precious Lane, Gold Town",
-  },
-  {
-    id: "3",
-    name: "Michael Brown",
-    shopName: "Gem Masters",
-    mobile: "555-456-7890",
-    address: "789 Crystal Avenue, Platinum Heights",
-  },
-  {
-    id: "4",
-    name: "Emma Wilson",
-    shopName: "Royal Jewels",
-    mobile: "555-321-7654",
-    address: "101 Crown Road, Emerald Valley",
-  },
-  {
-    id: "5",
-    name: "David Lee",
-    shopName: "Precious Metals",
-    mobile: "555-789-0123",
-    address: "202 Gold Street, Ruby City",
-  },
-];
+import { useToast } from "@/hooks/use-toast";
+import { clientServices } from "@/services/api";
+import { useQuery } from "@tanstack/react-query";
 
 export default function ClientSelectionPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [clients, setClients] = useState(initialClients);
+
+  // Fetch clients using react-query
+  const {
+    data: clientsData,
+    isLoading,
+    isError,
+    error
+  } = useQuery({
+    queryKey: ['clients'],
+    queryFn: () => clientServices.getClients(),
+    onError: (err) => {
+      console.error("Error fetching clients:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load clients. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Filter clients based on search term
-  const filteredClients = clients.filter(
+  const filteredClients = clientsData?.clients?.filter(
     (client) =>
-      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.shopName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.mobile.includes(searchTerm)
-  );
+      (client.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.shopName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.phoneNumber?.includes(searchTerm)) || false
+  ) || [];
 
   // Select client and navigate to receipt creation
   const selectClient = (client) => {
@@ -110,43 +93,55 @@ export default function ClientSelectionPage() {
         </div>
 
         <div className="overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Shop Name</TableHead>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClients.length > 0 ? (
-                filteredClients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell className="font-medium">{client.shopName}</TableCell>
-                    <TableCell>{client.name}</TableCell>
-                    <TableCell>{client.mobile}</TableCell>
-                    <TableCell className="max-w-xs truncate">{client.address}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        onClick={() => selectClient(client)}
-                        size="sm"
-                      >
-                        Select
-                      </Button>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-lg">Loading clients...</span>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-10 text-destructive">
+              <p>Failed to load clients</p>
+              <p className="text-sm mt-2">Please try refreshing the page</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Shop Name</TableHead>
+                  <TableHead>Client Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredClients.length > 0 ? (
+                  filteredClients.map((client) => (
+                    <TableRow key={client._id}>
+                      <TableCell className="font-medium">{client.shopName}</TableCell>
+                      <TableCell>{client.clientName}</TableCell>
+                      <TableCell>{client.phoneNumber}</TableCell>
+                      <TableCell className="max-w-xs truncate">{client.address}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          onClick={() => selectClient(client)}
+                          size="sm"
+                        >
+                          Select
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                      {searchTerm ? "No clients match your search" : "No clients found"}
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                    {searchTerm ? "No clients match your search" : "No clients found"}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
     </div>

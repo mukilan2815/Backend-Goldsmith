@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Eye, Edit, Trash, Download } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash, Download, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -28,67 +28,60 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-// Mock data for receipts
-const initialReceipts = [
-  {
-    id: "1",
-    client: {
-      id: "1",
-      name: "John Smith",
-      shopName: "Golden Creations",
-      mobile: "555-123-4567",
-      address: "123 Jewel Street, Diamond City",
-    },
-    totalGrossWeight: 25.5,
-    totalStoneWeight: 5.2,
-    totalNetWeight: 20.3,
-    totalFinalWeight: 18.7,
-    totalAmount: 93500,
-    createdAt: "2024-05-10T09:30:00Z",
-  },
-  {
-    id: "2",
-    client: {
-      id: "2",
-      name: "Sarah Johnson",
-      shopName: "Silver Linings",
-      mobile: "555-987-6543",
-      address: "456 Precious Lane, Gold Town",
-    },
-    totalGrossWeight: 18.7,
-    totalStoneWeight: 3.2,
-    totalNetWeight: 15.5,
-    totalFinalWeight: 14.3,
-    totalAmount: 71500,
-    createdAt: "2024-05-12T14:45:00Z",
-  },
-  {
-    id: "3",
-    client: {
-      id: "3",
-      name: "Michael Brown",
-      shopName: "Gem Masters",
-      mobile: "555-456-7890",
-      address: "789 Crystal Avenue, Platinum Heights",
-    },
-    totalGrossWeight: 32.1,
-    totalStoneWeight: 8.4,
-    totalNetWeight: 23.7,
-    totalFinalWeight: 21.8,
-    totalAmount: 109000,
-    createdAt: "2024-05-14T11:15:00Z",
-  },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { receiptServices } from "@/services/api";
 
 export default function ReceiptsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [receipts, setReceipts] = useState(initialReceipts);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [receiptToDelete, setReceiptToDelete] = useState<string | null>(null);
+
+  // Fetch receipts
+  const {
+    data: receiptsData,
+    isLoading,
+    isError,
+    error
+  } = useQuery({
+    queryKey: ['receipts'],
+    queryFn: () => receiptServices.getReceipts(),
+    onError: (err) => {
+      console.error("Error fetching receipts:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load receipts. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const receipts = receiptsData?.receipts || [];
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => receiptServices.deleteReceipt(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      toast({
+        title: "Receipt Deleted",
+        description: "The receipt has been successfully removed.",
+      });
+      setDeleteDialogOpen(false);
+      setReceiptToDelete(null);
+    },
+    onError: (err) => {
+      console.error("Error deleting receipt:", err);
+      toast({
+        title: "Error",
+        description: "Failed to delete receipt. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Filter receipts based on search term and filter type
   const filteredReceipts = receipts.filter((receipt) => {
@@ -98,21 +91,20 @@ export default function ReceiptsPage() {
     // Search term filter
     if (searchTerm) {
       matches =
-        receipt.client.name.toLowerCase().includes(searchLower) ||
-        receipt.client.shopName.toLowerCase().includes(searchLower) ||
-        receipt.client.mobile.includes(searchTerm);
+        receipt.clientInfo?.clientName?.toLowerCase().includes(searchLower) ||
+        receipt.clientInfo?.shopName?.toLowerCase().includes(searchLower) ||
+        receipt?.voucherId?.toLowerCase().includes(searchLower);
       
       if (!matches) return false;
     }
     
-    // Type filter
-    // For now, we don't have receipt types, but this could be implemented later
+    // Type filter (if implemented in the future)
     
     return matches;
   });
 
   const handleCreateReceipt = () => {
-    navigate("/receipts/new");
+    navigate("/receipts/select-client");
   };
 
   const handleViewReceipt = (id: string) => {
@@ -130,17 +122,7 @@ export default function ReceiptsPage() {
 
   const handleDeleteReceipt = () => {
     if (!receiptToDelete) return;
-    
-    // In a real app, this would make an API call
-    setReceipts(receipts.filter((receipt) => receipt.id !== receiptToDelete));
-    
-    toast({
-      title: "Receipt Deleted",
-      description: "The receipt has been successfully removed.",
-    });
-    
-    setDeleteDialogOpen(false);
-    setReceiptToDelete(null);
+    deleteMutation.mutate(receiptToDelete);
   };
 
   const handleDownloadPDF = (id: string) => {
@@ -169,7 +151,7 @@ export default function ReceiptsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by client name, shop name or phone number"
+              placeholder="Search by client name, shop name or voucher ID"
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -188,76 +170,88 @@ export default function ReceiptsPage() {
         </div>
 
         <div className="overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Shop Name</TableHead>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Gross Wt (g)</TableHead>
-                <TableHead className="text-right">Final Wt (g)</TableHead>
-                <TableHead className="text-right">Total Amount (₹)</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredReceipts.length > 0 ? (
-                filteredReceipts.map((receipt) => (
-                  <TableRow key={receipt.id}>
-                    <TableCell className="font-medium">{receipt.client.shopName}</TableCell>
-                    <TableCell>{receipt.client.name}</TableCell>
-                    <TableCell>{new Date(receipt.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">{receipt.totalGrossWeight.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{receipt.totalFinalWeight.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{receipt.totalAmount.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleViewReceipt(receipt.id)}
-                          title="View Receipt"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleEditReceipt(receipt.id)}
-                          title="Edit Receipt"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleDownloadPDF(receipt.id)}
-                          title="Download PDF"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => openDeleteDialog(receipt.id)}
-                          title="Delete Receipt"
-                          className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-lg">Loading receipts...</span>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-10 text-destructive">
+              <p>Failed to load receipts</p>
+              <p className="text-sm mt-2">Please try refreshing the page</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Voucher ID</TableHead>
+                  <TableHead>Shop Name</TableHead>
+                  <TableHead>Client Name</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Gross Wt (g)</TableHead>
+                  <TableHead className="text-right">Final Wt (g)</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredReceipts.length > 0 ? (
+                  filteredReceipts.map((receipt) => (
+                    <TableRow key={receipt._id}>
+                      <TableCell>{receipt.voucherId}</TableCell>
+                      <TableCell className="font-medium">{receipt.clientInfo.shopName}</TableCell>
+                      <TableCell>{receipt.clientInfo.clientName}</TableCell>
+                      <TableCell>{new Date(receipt.issueDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">{receipt.totals.grossWt.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{receipt.totals.finalWt.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleViewReceipt(receipt._id)}
+                            title="View Receipt"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleEditReceipt(receipt._id)}
+                            title="Edit Receipt"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleDownloadPDF(receipt._id)}
+                            title="Download PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => openDeleteDialog(receipt._id)}
+                            title="Delete Receipt"
+                            className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                      {searchTerm ? "No receipts match your search" : "No receipts found"}
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                    {searchTerm ? "No receipts match your search" : "No receipts found"}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
 
@@ -271,11 +265,22 @@ export default function ReceiptsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteMutation.isPending}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteReceipt}>
-              Delete
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteReceipt}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

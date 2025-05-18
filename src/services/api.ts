@@ -1,5 +1,6 @@
+
 import axios from 'axios';
-import { useToast, toast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 // For local development, this would point to your local server
 const API_URL = 'http://localhost:5000/api'; 
@@ -61,228 +62,192 @@ export const clientServices = {
   },
   
   // Get client by ID
-  getClient: async (id: string) => {
-    const response = await api.get(`/clients/${id}`);
-    return response.data;
+  getClient: async (id) => {
+    try {
+      const response = await api.get(`/clients/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching client ${id}:`, error);
+      throw error;
+    }
   },
   
   // Create new client
-  createClient: async (clientData: any) => {
-    console.log('Creating client with data:', clientData);
+  createClient: async (clientData) => {
     try {
       const response = await api.post('/clients', clientData);
-      console.log('Client created response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error in createClient:', error);
+      console.error('Error creating client:', error);
       throw error;
     }
   },
   
   // Update client
-  updateClient: async (id: string, clientData: any) => {
-    const response = await api.put(`/clients/${id}`, clientData);
-    return response.data;
+  updateClient: async (id, clientData) => {
+    try {
+      const response = await api.put(`/clients/${id}`, clientData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating client ${id}:`, error);
+      throw error;
+    }
   },
   
   // Delete client
-  deleteClient: async (id: string) => {
-    const response = await api.delete(`/clients/${id}`);
-    return response.data;
+  deleteClient: async (id) => {
+    try {
+      const response = await api.delete(`/clients/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting client ${id}:`, error);
+      throw error;
+    }
   },
   
   // Search clients
-  searchClients: async (query: string) => {
-    const response = await api.get(`/clients/search?query=${query}`);
-    return response.data;
+  searchClients: async (query) => {
+    try {
+      const response = await api.get(`/clients/search?query=${query}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error searching clients:', error);
+      throw error;
+    }
   }
 };
 
 // Receipt services
 export const receiptServices = {
   // Get all receipts
-  getReceipts: async () => {
-    const response = await api.get('/receipts');
-    return response.data;
+  getReceipts: async (params = {}) => {
+    try {
+      const response = await api.get('/receipts', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching receipts:', error);
+      throw error;
+    }
   },
   
   // Get receipt by ID
-  getReceipt: async (id: string) => {
-    const response = await api.get(`/receipts/${id}`);
-    return response.data;
+  getReceipt: async (id) => {
+    try {
+      const response = await api.get(`/receipts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching receipt ${id}:`, error);
+      throw error;
+    }
   },
   
   // Get receipts by client ID
-  getClientReceipts: async (clientId: string) => {
-    const response = await api.get(`/receipts/client/${clientId}`);
-    return response.data;
+  getClientReceipts: async (clientId, params = {}) => {
+    try {
+      const response = await api.get(`/receipts/client/${clientId}`, { params });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching receipts for client ${clientId}:`, error);
+      throw error;
+    }
   },
   
   // Create new receipt
-  createReceipt: async (receiptData: any) => {
-    const response = await api.post('/receipts', receiptData);
-    return response.data;
+  createReceipt: async (receiptData) => {
+    try {
+      const response = await api.post('/receipts', receiptData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating receipt:', error);
+      throw error;
+    }
   },
   
   // Update receipt
-  updateReceipt: async (id: string, receiptData: any) => {
-    const response = await api.put(`/receipts/${id}`, receiptData);
-    return response.data;
+  updateReceipt: async (id, receiptData) => {
+    try {
+      const response = await api.put(`/receipts/${id}`, receiptData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating receipt ${id}:`, error);
+      throw error;
+    }
   },
   
   // Delete receipt
-  deleteReceipt: async (id: string) => {
-    const response = await api.delete(`/receipts/${id}`);
-    return response.data;
+  deleteReceipt: async (id) => {
+    try {
+      const response = await api.delete(`/receipts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting receipt ${id}:`, error);
+      throw error;
+    }
   },
   
   // Generate unique voucher ID
   generateVoucherId: async () => {
-    const response = await api.get('/receipts/generate-voucher-id');
-    return response.data;
+    try {
+      const response = await api.get('/receipts/generate-voucher-id');
+      return response.data;
+    } catch (error) {
+      console.error('Error generating voucher ID:', error);
+      throw error;
+    }
   },
   
   // Search receipts
-  searchReceipts: async (query: string) => {
-    const response = await api.get(`/receipts/search?query=${query}`);
-    return response.data;
+  searchReceipts: async (query) => {
+    try {
+      const response = await api.get(`/receipts/search?query=${query}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error searching receipts:', error);
+      throw error;
+    }
   }
 };
 
-// Dashboard analytics services
+// Export analytics and other services
 export const analyticsServices = {
-  // Get dashboard stats
   getDashboardStats: async () => {
-    const response = await api.get('/analytics/dashboard');
-    return response.data;
+    try {
+      const response = await api.get('/analytics/dashboard');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      throw error; 
+    }
   },
   
-  // Get sales by date range
-  getSalesByDate: async (startDate: string, endDate: string) => {
-    const response = await api.get(`/analytics/sales?startDate=${startDate}&endDate=${endDate}`);
-    return response.data;
+  getSalesByDate: async (startDate, endDate) => {
+    try {
+      const response = await api.get(`/analytics/sales?startDate=${startDate}&endDate=${endDate}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+      throw error;
+    }
   },
   
-  // Get metal type distribution
   getMetalTypeDistribution: async () => {
-    const response = await api.get('/analytics/metal-types');
-    return response.data;
+    try {
+      const response = await api.get('/analytics/metal-types');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching metal type distribution:', error);
+      throw error;
+    }
   },
   
-  // Get yearly comparison data
   getYearlyComparison: async () => {
-    const response = await api.get('/analytics/yearly-comparison');
-    return response.data;
-  }
-};
-
-// Admin receipt services
-export const adminReceiptServices = {
-  // Get all admin receipts
-  getAdminReceipts: async () => {
-    const response = await api.get('/admin-receipts');
-    return response.data;
-  },
-  
-  // Get admin receipt by ID
-  getAdminReceipt: async (id: string) => {
-    const response = await api.get(`/admin-receipts/${id}`);
-    return response.data;
-  },
-  
-  // Get admin receipts by client ID
-  getClientAdminReceipts: async (clientId: string) => {
-    const response = await api.get(`/admin-receipts?clientId=${clientId}`);
-    return response.data;
-  },
-  
-  // Create new admin receipt
-  createAdminReceipt: async (receiptData: any) => {
-    const response = await api.post('/admin-receipts', receiptData);
-    return response.data;
-  },
-  
-  // Update admin receipt
-  updateAdminReceipt: async (id: string, receiptData: any) => {
-    const response = await api.put(`/admin-receipts/${id}`, receiptData);
-    return response.data;
-  },
-  
-  // Delete admin receipt
-  deleteAdminReceipt: async (id: string) => {
-    const response = await api.delete(`/admin-receipts/${id}`);
-    return response.data;
-  },
-  
-  // Generate unique voucher ID
-  generateVoucherId: async () => {
-    const response = await api.get('/admin-receipts/generate-voucher-id');
-    return response.data;
-  },
-  
-  // Search admin receipts
-  searchAdminReceipts: async (params: any) => {
-    const queryString = new URLSearchParams(params).toString();
-    const response = await api.get(`/admin-receipts/search?${queryString}`);
-    return response.data;
-  }
-};
-
-// Admin bill services
-export const adminBillServices = {
-  // Get all admin bills
-  getAdminBills: async (params?: any) => {
-    let url = '/admin-bills';
-    if (params) {
-      const queryString = new URLSearchParams(params).toString();
-      url = `${url}?${queryString}`;
+    try {
+      const response = await api.get('/analytics/yearly-comparison');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching yearly comparison:', error);
+      throw error;
     }
-    const response = await api.get(url);
-    return response.data;
-  },
-  
-  // Get admin bill by ID
-  getAdminBill: async (id: string) => {
-    const response = await api.get(`/admin-bills/${id}`);
-    return response.data;
-  },
-  
-  // Delete admin bill
-  deleteAdminBill: async (id: string) => {
-    const response = await api.delete(`/admin-bills/${id}`);
-    return response.data;
-  }
-};
-
-// Bill services
-export const billServices = {
-  // Get all client bills
-  getBills: async (params?: any) => {
-    let url = '/bills';
-    if (params) {
-      const queryString = new URLSearchParams(params).toString();
-      url = `${url}?${queryString}`;
-    }
-    const response = await api.get(url);
-    return response.data;
-  },
-  
-  // Get bill by ID
-  getBill: async (id: string) => {
-    const response = await api.get(`/bills/${id}`);
-    return response.data;
-  },
-  
-  // Download bill as PDF
-  downloadBill: async (id: string) => {
-    const response = await api.get(`/bills/${id}/download`);
-    return response.data;
-  },
-  
-  // Delete bill
-  deleteBill: async (id: string) => {
-    const response = await api.delete(`/bills/${id}`);
-    return response.data;
   }
 };
 
@@ -290,7 +255,4 @@ export default {
   clientServices,
   receiptServices,
   analyticsServices,
-  adminReceiptServices,
-  adminBillServices,
-  billServices
 };

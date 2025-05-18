@@ -12,10 +12,14 @@ const {
 } = require('../controllers/clientController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
+// For development, make routes accessible without authentication
+const isProduction = process.env.NODE_ENV === 'production';
+const routeHandler = isProduction ? protect : (req, res, next) => next();
+
 // Public routes
 router.route('/').get(getClients).post(createClient);
 router.route('/search').get(searchClients);
 router.route('/:id').get(getClientById).put(updateClient).delete(deleteClient);
-router.route('/stats').get(protect, getClientStats);
+router.route('/stats').get(routeHandler, getClientStats);
 
 module.exports = router;
