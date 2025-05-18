@@ -54,18 +54,26 @@ const getClientById = asyncHandler(async (req, res) => {
 const createClient = asyncHandler(async (req, res) => {
   const { shopName, clientName, phoneNumber, address, email } = req.body;
 
-  // Check if client with same phone number already exists
-  const clientExists = await Client.findOne({ phoneNumber });
-  if (clientExists) {
+  // Validate required fields
+  if (!clientName || clientName.trim() === '') {
     res.status(400);
-    throw new Error('Client with this phone number already exists');
+    throw new Error('Client name is required');
+  }
+
+  // Check if client with same phone number already exists
+  if (phoneNumber && phoneNumber.trim() !== '') {
+    const clientExists = await Client.findOne({ phoneNumber });
+    if (clientExists) {
+      res.status(400);
+      throw new Error('Client with this phone number already exists');
+    }
   }
 
   const client = await Client.create({
-    shopName,
+    shopName: shopName || '',
     clientName,
-    phoneNumber,
-    address,
+    phoneNumber: phoneNumber || '',
+    address: address || '',
     email: email || '',
   });
 

@@ -5,23 +5,33 @@ const clientSchema = mongoose.Schema(
   {
     shopName: {
       type: String,
-      required: true,
+      trim: true,
     },
     clientName: {
       type: String,
       required: true,
+      trim: true,
     },
     phoneNumber: {
       type: String,
-      required: true,
+      trim: true,
+      // Simple phone validation that allows different formats
+      validate: {
+        validator: function(v) {
+          // Allow empty as it's optional, or validate format if provided
+          return v === '' || /^\+?[0-9]{10,15}$/.test(v);
+        },
+        message: props => `${props.value} is not a valid phone number!`
+      }
     },
     address: {
       type: String,
-      required: true,
+      trim: true,
     },
     email: {
       type: String,
       default: '',
+      trim: true,
     },
     active: {
       type: Boolean,
