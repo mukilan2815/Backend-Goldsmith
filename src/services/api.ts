@@ -155,6 +155,7 @@ export const receiptServices = {
   // Create new receipt
   createReceipt: async (receiptData) => {
     try {
+      console.log('Sending receipt data to server:', receiptData);
       const response = await api.post('/receipts', receiptData);
       return response.data;
     } catch (error) {

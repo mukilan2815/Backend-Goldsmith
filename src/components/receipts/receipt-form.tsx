@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -33,6 +32,7 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { ReceiptItem } from "@/models/Receipt";
+import { receiptServices } from "@/services/api";
 
 // Validation schema
 const receiptItemSchema = z.object({
@@ -101,6 +101,23 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
       stoneAmount: 0,
     },
   ]);
+
+  // Generate a real voucher ID when component mounts
+  useEffect(() => {
+    const fetchVoucherId = async () => {
+      try {
+        const response = await receiptServices.generateVoucherId();
+        if (response && response.voucherId) {
+          setVoucherId(response.voucherId);
+        }
+      } catch (error) {
+        console.error("Error fetching voucher ID:", error);
+        // Keep the randomly generated one if API fails
+      }
+    };
+    
+    fetchVoucherId();
+  }, []);
 
   // Initialize form with client data if provided
   const today = new Date();
@@ -209,64 +226,52 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
     setIsSubmitting(true);
     
     try {
-      // Prepare receipt data with calculated values
+      if (!client || !client.id) {
+        toast({
+          variant: "destructive",
+          title: "Missing Client",
+          description: "Please select a client before creating a receipt.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Prepare receipt data with calculated values for MongoDB
       const receiptData = {
-        id: receiptId || uuidv4(),
-        voucherId: voucherId,
-        clientId: client?.id || uuidv4(),
+        clientId: client.id,
         clientInfo: {
-          name: client?.clientName || "",
-          shopName: client?.shopName || "",
-          phoneNumber: client?.phoneNumber || "",
-          address: client?.address || "",
+          clientName: client.clientName || "",
+          shopName: client.shopName || "",
+          phoneNumber: client.phoneNumber || "",
         },
-        date: formData.date,
         metalType: formData.metalType,
-        overallWeight: formData.overallWeight,
-        unit: formData.unit,
-        items: items.map((item, index) => ({
-          sNo: index + 1,
+        issueDate: formData.date,
+        items: items.map((item) => ({
           itemName: item.description,
           tag: item.tag || "",
           grossWt: item.grossWeight,
           stoneWt: item.stoneWeight,
           meltingTouch: item.meltingPercent,
           stoneAmt: item.stoneAmount || 0,
-          netWt: item.netWeight,
-          finalWt: item.finalWeight,
         })),
-        totals: {
-          grossWt: totals.grossWeight,
-          stoneWt: totals.stoneWeight,
-          netWt: totals.netWeight,
-          finalWt: totals.finalWeight,
-          stoneAmt: totals.stoneAmount,
-        },
-        issueDate: formData.date.toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        voucherId: voucherId,
+        // Totals will be calculated on the server using our pre-save hook
       };
 
-      // In a real app, this would call an API endpoint
-      // await fetch('/api/receipts', { 
-      //   method: 'POST', 
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(receiptData) 
-      // });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log("Saving receipt data:", receiptData);
+
+      // Send data to the server
+      const result = await receiptServices.createReceipt(receiptData);
       
       toast({
-        title: receiptId ? "Receipt Updated" : "Receipt Created",
-        description: `Receipt ${voucherId} ${receiptId ? "updated" : "created"} successfully.`,
+        title: "Receipt Created",
+        description: `Receipt ${result.voucherId || voucherId} created successfully.`,
       });
       
       // Navigate back to receipts page
       navigate("/receipts");
     } catch (error) {
+      console.error("Error saving receipt:", error);
       toast({
         variant: "destructive",
         title: "Error",

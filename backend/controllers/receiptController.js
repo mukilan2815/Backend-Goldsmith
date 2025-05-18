@@ -1,4 +1,3 @@
-
 const Receipt = require('../models/receiptModel');
 const Client = require('../models/clientModel');
 const asyncHandler = require('express-async-handler');
@@ -121,58 +120,60 @@ const getReceiptsByClientId = asyncHandler(async (req, res) => {
 const createReceipt = asyncHandler(async (req, res) => {
   const { clientId, clientInfo, metalType, issueDate, items, totals, notes, deliveryDate } = req.body;
 
+  // Log the incoming data
+  console.log('Creating receipt with data:', req.body);
+
   // Validate client exists
-  const client = await Client.findById(clientId);
-  if (!client) {
-    res.status(404);
-    throw new Error('Client not found');
+  let client;
+  try {
+    client = await Client.findById(clientId);
+    if (!client) {
+      res.status(404);
+      throw new Error('Client not found');
+    }
+  } catch (error) {
+    console.log('Client validation error:', error.message);
+    // If it's not a "Client not found" error but a database error
+    if (error.message !== 'Client not found') {
+      console.error('Database error during client lookup:', error);
+      res.status(500);
+      throw new Error('Database error during client validation');
+    }
+    throw error; // Re-throw the "Client not found" error
   }
 
-  // Generate unique voucher ID
-  const voucherId = await generateVoucherId();
+  // Generate unique voucher ID if not provided
+  let voucherId = req.body.voucherId;
+  if (!voucherId) {
+    voucherId = await generateVoucherId();
+  }
 
-  // Calculate totals if not provided
-  let calculatedTotals = totals;
-  if (!calculatedTotals) {
-    calculatedTotals = {
-      grossWt: 0,
-      stoneWt: 0,
-      netWt: 0,
-      finalWt: 0,
-      stoneAmt: 0,
-    };
-    
-    items.forEach(item => {
-      calculatedTotals.grossWt += Number(item.grossWt);
-      calculatedTotals.stoneWt += Number(item.stoneWt);
-      calculatedTotals.stoneAmt += Number(item.stoneAmt);
+  try {
+    const receipt = await Receipt.create({
+      clientId,
+      clientInfo: clientInfo || {
+        clientName: client.clientName,
+        shopName: client.shopName,
+        phoneNumber: client.phoneNumber,
+      },
+      metalType,
+      issueDate: issueDate || new Date(),
+      items,
+      voucherId,
+      notes,
+      deliveryDate,
     });
-    
-    calculatedTotals.netWt = calculatedTotals.grossWt - calculatedTotals.stoneWt;
-    calculatedTotals.finalWt = calculatedTotals.netWt * (item.meltingTouch / 100);
-  }
 
-  const receipt = await Receipt.create({
-    clientId,
-    clientInfo: clientInfo || {
-      clientName: client.clientName,
-      shopName: client.shopName,
-      phoneNumber: client.phoneNumber,
-    },
-    metalType,
-    issueDate: issueDate || new Date(),
-    items,
-    totals: calculatedTotals,
-    voucherId,
-    notes,
-    deliveryDate,
-  });
-
-  if (receipt) {
-    res.status(201).json(receipt);
-  } else {
+    if (receipt) {
+      res.status(201).json(receipt);
+    } else {
+      res.status(400);
+      throw new Error('Invalid receipt data');
+    }
+  } catch (error) {
+    console.error('Error creating receipt:', error);
     res.status(400);
-    throw new Error('Invalid receipt data');
+    throw new Error(`Failed to create receipt: ${error.message}`);
   }
 });
 
