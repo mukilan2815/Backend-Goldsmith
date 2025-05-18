@@ -174,7 +174,8 @@ export const receiptServices = {
           grossWt: parseFloat(item.grossWt) || 0,
           stoneWt: parseFloat(item.stoneWt) || 0,
           meltingTouch: parseFloat(item.meltingTouch) || 0,
-          stoneAmt: parseFloat(item.stoneAmt) || 0
+          stoneAmt: parseFloat(item.stoneAmt) || 0,
+          totalInvoiceAmount: parseFloat(item.totalInvoiceAmount) || 0
         })) || [],
         voucherId: receiptData.voucherId,
         totals: {
@@ -182,8 +183,14 @@ export const receiptServices = {
           stoneWt: parseFloat(receiptData.totals?.stoneWt) || 0,
           netWt: parseFloat(receiptData.totals?.netWt) || 0,
           finalWt: parseFloat(receiptData.totals?.finalWt) || 0,
-          stoneAmt: parseFloat(receiptData.totals?.stoneAmt) || 0
-        }
+          stoneAmt: parseFloat(receiptData.totals?.stoneAmt) || 0,
+          totalInvoiceAmount: parseFloat(receiptData.totals?.totalInvoiceAmount) || 0
+        },
+        // Payment tracking fields
+        payments: receiptData.payments || [],
+        totalPaidAmount: parseFloat(receiptData.totalPaidAmount) || 0,
+        balanceDue: parseFloat(receiptData.balanceDue) || 0,
+        paymentStatus: receiptData.paymentStatus || 'Pending'
       };
       
       console.log('Formatted receipt data:', JSON.stringify(formattedData));

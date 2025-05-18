@@ -135,7 +135,11 @@ const createReceipt = asyncHandler(async (req, res) => {
     totals, 
     notes, 
     deliveryDate,
-    voucherId
+    voucherId,
+    payments,
+    totalPaidAmount,
+    balanceDue,
+    paymentStatus
   } = req.body;
 
   // Validate client exists if ID is provided
@@ -177,6 +181,7 @@ const createReceipt = asyncHandler(async (req, res) => {
         stoneWt: parseFloat(item.stoneWt) || 0,
         meltingTouch: parseFloat(item.meltingTouch) || 0,
         stoneAmt: parseFloat(item.stoneAmt) || 0,
+        totalInvoiceAmount: parseFloat(item.totalInvoiceAmount) || 0,
       }));
     } else if (items && Array.isArray(items)) {
       // Map items from the frontend format to the expected model format
@@ -187,6 +192,7 @@ const createReceipt = asyncHandler(async (req, res) => {
         stoneWt: parseFloat(item.stoneWeight || item.stoneWt) || 0,
         meltingTouch: parseFloat(item.meltingPercent || item.meltingTouch) || 0,
         stoneAmt: parseFloat(item.stoneAmount || item.stoneAmt) || 0,
+        totalInvoiceAmount: parseFloat(item.amount || item.totalInvoiceAmount) || 0,
       }));
     } else {
       receiptItems = [];
@@ -199,6 +205,33 @@ const createReceipt = asyncHandler(async (req, res) => {
       phoneNumber: phoneNumber || (client?.phoneNumber || ""),
     };
 
+    // Calculate total invoice amount if not provided
+    let totalInvoiceAmount = 0;
+    if (totals && totals.totalInvoiceAmount) {
+      totalInvoiceAmount = parseFloat(totals.totalInvoiceAmount);
+    } else {
+      // Calculate from items
+      totalInvoiceAmount = receiptItems.reduce((sum, item) => sum + (parseFloat(item.totalInvoiceAmount) || 0), 0);
+    }
+
+    // Initialize payment tracking if not provided
+    const paymentsData = payments || [];
+    const totalPaidAmountValue = parseFloat(totalPaidAmount) || 0;
+    const balanceDueValue = parseFloat(balanceDue) || totalInvoiceAmount - totalPaidAmountValue;
+    
+    let paymentStatusValue = paymentStatus || 'Pending';
+    if (!paymentStatus) {
+      if (totalInvoiceAmount <= 0) {
+        paymentStatusValue = 'Paid';
+      } else if (balanceDueValue <= 0) {
+        paymentStatusValue = 'Paid';
+      } else if (totalPaidAmountValue > 0 && balanceDueValue > 0) {
+        paymentStatusValue = 'Partially Paid';
+      } else {
+        paymentStatusValue = 'Pending';
+      }
+    }
+
     const receiptData = {
       clientId,
       clientInfo: clientInfoData,
@@ -209,6 +242,11 @@ const createReceipt = asyncHandler(async (req, res) => {
       voucherId: finalVoucherId,
       notes,
       deliveryDate,
+      // Include payment tracking fields
+      payments: paymentsData,
+      totalPaidAmount: totalPaidAmountValue,
+      balanceDue: balanceDueValue,
+      paymentStatus: paymentStatusValue,
       // If totals are provided, use them, otherwise they'll be calculated by the model
       ...(totals && {
         totals: {
@@ -217,6 +255,7 @@ const createReceipt = asyncHandler(async (req, res) => {
           netWt: parseFloat(totals.netWt) || 0,
           finalWt: parseFloat(totals.finalWt) || 0,
           stoneAmt: parseFloat(totals.stoneAmt) || 0,
+          totalInvoiceAmount: totalInvoiceAmount
         }
       })
     };
@@ -241,7 +280,19 @@ const createReceipt = asyncHandler(async (req, res) => {
 // @route   PUT /api/receipts/:id
 // @access  Public
 const updateReceipt = asyncHandler(async (req, res) => {
-  const { metalType, issueDate, items, totals, notes, deliveryDate, isCompleted } = req.body;
+  const { 
+    metalType, 
+    issueDate, 
+    items, 
+    totals, 
+    notes, 
+    deliveryDate, 
+    isCompleted,
+    payments,
+    totalPaidAmount,
+    balanceDue,
+    paymentStatus
+  } = req.body;
 
   const receipt = await Receipt.findById(req.params.id);
 
@@ -255,18 +306,55 @@ const updateReceipt = asyncHandler(async (req, res) => {
         netWt: 0,
         finalWt: 0,
         stoneAmt: 0,
+        totalInvoiceAmount: 0
       };
       
       items.forEach(item => {
         updatedTotals.grossWt += Number(item.grossWt);
         updatedTotals.stoneWt += Number(item.stoneWt);
         updatedTotals.stoneAmt += Number(item.stoneAmt);
+        updatedTotals.totalInvoiceAmount += Number(item.totalInvoiceAmount || 0);
       });
       
       updatedTotals.netWt = updatedTotals.grossWt - updatedTotals.stoneWt;
       // Use first item's melting touch as reference if available
       const meltingTouch = items[0]?.meltingTouch || receipt.items[0]?.meltingTouch || 100;
       updatedTotals.finalWt = updatedTotals.netWt * (meltingTouch / 100);
+    }
+
+    // Calculate payment totals if payments were updated
+    let updatedPayments = payments || receipt.payments;
+    let updatedTotalPaid = totalPaidAmount;
+    
+    if (payments && !totalPaidAmount) {
+      updatedTotalPaid = payments.reduce((sum, payment) => sum + Number(payment.amountPaid), 0);
+    }
+    
+    // Calculate balance due if needed
+    let updatedBalanceDue = balanceDue;
+    if ((updatedTotals || totals || items) && (payments || totalPaidAmount)) {
+      const invoiceAmount = (updatedTotals?.totalInvoiceAmount || totals?.totalInvoiceAmount ||
+        receipt.totals.totalInvoiceAmount);
+      updatedBalanceDue = invoiceAmount - (updatedTotalPaid || receipt.totalPaidAmount);
+    }
+    
+    // Determine payment status if not provided
+    let updatedPaymentStatus = paymentStatus;
+    if (!paymentStatus && (updatedBalanceDue !== undefined || updatedTotalPaid !== undefined)) {
+      const invoiceAmount = (updatedTotals?.totalInvoiceAmount || totals?.totalInvoiceAmount ||
+        receipt.totals.totalInvoiceAmount);
+      const finalBalanceDue = updatedBalanceDue !== undefined ? updatedBalanceDue : receipt.balanceDue;
+      const finalTotalPaid = updatedTotalPaid !== undefined ? updatedTotalPaid : receipt.totalPaidAmount;
+      
+      if (invoiceAmount <= 0) {
+        updatedPaymentStatus = 'Paid';
+      } else if (finalBalanceDue <= 0) {
+        updatedPaymentStatus = 'Paid';
+      } else if (finalTotalPaid > 0 && finalBalanceDue > 0) {
+        updatedPaymentStatus = 'Partially Paid';
+      } else {
+        updatedPaymentStatus = 'Pending';
+      }
     }
 
     receipt.metalType = metalType || receipt.metalType;
@@ -276,6 +364,12 @@ const updateReceipt = asyncHandler(async (req, res) => {
     receipt.notes = notes !== undefined ? notes : receipt.notes;
     receipt.deliveryDate = deliveryDate !== undefined ? deliveryDate : receipt.deliveryDate;
     receipt.isCompleted = isCompleted !== undefined ? isCompleted : receipt.isCompleted;
+    
+    // Update payment tracking fields
+    receipt.payments = updatedPayments;
+    if (updatedTotalPaid !== undefined) receipt.totalPaidAmount = updatedTotalPaid;
+    if (updatedBalanceDue !== undefined) receipt.balanceDue = updatedBalanceDue;
+    if (updatedPaymentStatus !== undefined) receipt.paymentStatus = updatedPaymentStatus;
 
     const updatedReceipt = await receipt.save();
     res.json(updatedReceipt);

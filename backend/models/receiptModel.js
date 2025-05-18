@@ -10,8 +10,22 @@ const receiptItemSchema = new mongoose.Schema({
     netWt: { type: Number, default: 0 }, // Calculated: grossWt - stoneWt
     meltingTouch: { type: Number, required: [true, "Melting touch is required."], default: 0, min: [0, "Melting touch cannot be negative."] }, // Percentage
     finalWt: { type: Number, default: 0 }, // Calculated: netWt * (meltingTouch / 100)
-    stoneAmt: { type: Number, default: 0, min: [0, "Stone amount cannot be negative."] }
+    stoneAmt: { type: Number, default: 0, min: [0, "Stone amount cannot be negative."] },
+    totalInvoiceAmount: { type: Number, default: 0, min: [0, "Invoice amount cannot be negative."] } // Added for tracking payments
 }, { _id: false }); // No separate _id for these sub-documents
+
+// Define payment schema for tracking payments
+const paymentSchema = new mongoose.Schema({
+    paymentDate: { type: Date, default: Date.now },
+    amountPaid: { type: Number, required: [true, "Amount paid is required"], min: [0.01, "Payment amount must be positive"] },
+    paymentMethod: { 
+        type: String, 
+        required: [true, "Payment method is required"], 
+        enum: ['Cash', 'Bank Transfer', 'Credit Card', 'Debit Card', 'Cheque', 'Online Payment', 'Other'] 
+    },
+    referenceNumber: { type: String, trim: true },
+    notes: { type: String, trim: true }
+}, { _id: true }); // Include _id for payment records
 
 const receiptSchema = mongoose.Schema(
   {
@@ -36,7 +50,17 @@ const receiptSchema = mongoose.Schema(
       stoneWt: { type: Number, default: 0 },
       netWt: { type: Number, default: 0 },
       finalWt: { type: Number, default: 0 },
-      stoneAmt: { type: Number, default: 0 }
+      stoneAmt: { type: Number, default: 0 },
+      totalInvoiceAmount: { type: Number, default: 0 } // Total invoice amount for payment tracking
+    },
+    // Payment tracking fields
+    payments: [paymentSchema], // Array of payment records
+    totalPaidAmount: { type: Number, default: 0 },
+    balanceDue: { type: Number, default: 0 },
+    paymentStatus: { 
+        type: String, 
+        enum: ['Pending', 'Partially Paid', 'Paid', 'Overdue', 'Cancelled'], 
+        default: 'Pending' 
     },
     notes: { type: String, trim: true },
     isCompleted: { type: Boolean, default: false }
@@ -53,6 +77,7 @@ receiptSchema.pre('save', function(next) {
   let totalNetWt = 0;
   let totalFinalWt = 0;
   let totalStoneAmt = 0;
+  let totalInvoiceAmount = 0;
 
   this.items.forEach(item => {
     item.netWt = parseFloat((item.grossWt || 0) - (item.stoneWt || 0));
@@ -65,6 +90,7 @@ receiptSchema.pre('save', function(next) {
     totalNetWt += item.netWt;
     totalFinalWt += item.finalWt;
     totalStoneAmt += (item.stoneAmt || 0);
+    totalInvoiceAmount += (item.totalInvoiceAmount || 0);
   });
 
   this.totals = {
@@ -72,8 +98,29 @@ receiptSchema.pre('save', function(next) {
     stoneWt: parseFloat(totalStoneWt.toFixed(3)),
     netWt: parseFloat(totalNetWt.toFixed(3)),
     finalWt: parseFloat(totalFinalWt.toFixed(3)),
-    stoneAmt: parseFloat(totalStoneAmt.toFixed(2))
+    stoneAmt: parseFloat(totalStoneAmt.toFixed(2)),
+    totalInvoiceAmount: parseFloat(totalInvoiceAmount.toFixed(2))
   };
+
+  // Calculate payment totals
+  let totalPaid = 0;
+  this.payments.forEach(payment => {
+    totalPaid += payment.amountPaid;
+  });
+
+  this.totalPaidAmount = parseFloat(totalPaid.toFixed(2));
+  this.balanceDue = parseFloat((this.totals.totalInvoiceAmount - this.totalPaidAmount).toFixed(2));
+
+  // Update payment status based on calculations
+  if (this.totals.totalInvoiceAmount <= 0) {
+    this.paymentStatus = 'Paid';
+  } else if (this.balanceDue <= 0) {
+    this.paymentStatus = 'Paid';
+  } else if (this.totalPaidAmount > 0 && this.balanceDue > 0) {
+    this.paymentStatus = 'Partially Paid';
+  } else if (this.totalPaidAmount === 0 && this.balanceDue > 0) {
+    this.paymentStatus = 'Pending';
+  }
   
   next();
 });

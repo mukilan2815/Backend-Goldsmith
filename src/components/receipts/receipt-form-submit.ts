@@ -62,11 +62,22 @@ export async function submitReceiptForm(formData: ReceiptFormData, navigate: (pa
         stoneWt: item.stoneWeight.toString(),
         meltingTouch: item.meltingPercent.toString(),
         stoneAmt: (item.stoneAmount || 0).toString(),
+        // Add totalInvoiceAmount for payment tracking
+        totalInvoiceAmount: (item.amount || 0).toString(),
       })),
-      totals: totals,
+      totals: {
+        ...totals,
+        // Adding total invoice amount calculation
+        totalInvoiceAmount: formData.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+      },
+      // Initialize payment tracking fields
+      payments: [],
+      totalPaidAmount: 0,
+      balanceDue: formData.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+      paymentStatus: 'Pending'
     };
 
-    console.log("Submitting receipt data:", JSON.stringify(receiptData));
+    console.log("Submitting receipt data to server:", JSON.stringify(receiptData));
 
     // Send data to the server
     const result = await receiptServices.createReceipt(receiptData);
