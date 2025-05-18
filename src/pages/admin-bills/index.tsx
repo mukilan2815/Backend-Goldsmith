@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { adminBillServices } from "@/services/api";
-import { toast } from "@/components/ui/use-toast";
-import { Eye, Trash2, Calendar, Search } from "lucide-react";
+import { adminBillServices } from "@/services/api-admin";
+import { useToast } from "@/hooks/use-toast";
+import { Eye, Trash, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Pagination,
@@ -42,6 +42,7 @@ const AdminBillsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [billsPerPage] = useState(10);
+  const { toast } = useToast();
   
   const {
     data: adminBills,
@@ -89,7 +90,7 @@ const AdminBillsPage = () => {
   return (
     <div className="container p-6 mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Admin Bills</h1>
+        <h1 className="text-3xl font-serif font-bold">Admin Bills</h1>
       </div>
       
       <Card>
@@ -126,13 +127,13 @@ const AdminBillsPage = () => {
                       <TableHead>Status</TableHead>
                       <TableHead>Given Date</TableHead>
                       <TableHead>Received Date</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentBills.map((bill: AdminBill) => (
                       <TableRow key={bill._id}>
-                        <TableCell>{bill.voucherId}</TableCell>
+                        <TableCell className="font-medium">{bill.voucherId}</TableCell>
                         <TableCell>{bill.clientName}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs capitalize ${
@@ -149,8 +150,8 @@ const AdminBillsPage = () => {
                         <TableCell>
                           {new Date(bill.received.date).toLocaleDateString()}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
                             <Button variant="outline" size="sm" asChild>
                               <Link to={`/admin-receipts/${bill._id}`}>
                                 <Eye className="h-4 w-4" />
@@ -161,7 +162,7 @@ const AdminBillsPage = () => {
                               size="sm"
                               onClick={() => handleDelete(bill._id)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
