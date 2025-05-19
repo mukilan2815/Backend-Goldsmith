@@ -561,8 +561,12 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
           >
             Back
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+          <Button onClick={(e) => {
+            e.preventDefault();
+            form.handleSubmit(onSubmit)(e);
+            console.log("Form submitted");
+          }} type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             Save Receipt
           </Button>
         </div>
