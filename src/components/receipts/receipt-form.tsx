@@ -32,7 +32,7 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { ReceiptItem } from "@/models/Receipt";
-import { receiptServices } from "@/services/api";
+import { receiptServices } from "@/services/receipt-services";
 import { submitReceiptForm } from "./receipt-form-submit";
 
 // Validation schema
@@ -561,11 +561,10 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
           >
             Back
           </Button>
-          <Button onClick={(e) => {
-            e.preventDefault();
-            form.handleSubmit(onSubmit)(e);
-            console.log("Form submitted");
-          }} type="submit" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+          >
             {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             Save Receipt
           </Button>
