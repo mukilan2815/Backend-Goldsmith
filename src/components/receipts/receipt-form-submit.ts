@@ -19,7 +19,7 @@ export interface ReceiptFormData {
 }
 
 export async function submitReceiptForm(formData: ReceiptFormData, navigate: (path: string) => void) {
-  console.log("Receipt form submission started", formData);
+  console.log("Receipt form submission started with data:", formData);
   
   try {
     if (!formData.client || !formData.client.id) {
@@ -45,7 +45,7 @@ export async function submitReceiptForm(formData: ReceiptFormData, navigate: (pa
       { grossWt: 0, stoneWt: 0, netWt: 0, finalWt: 0, stoneAmt: 0 }
     );
 
-    // Prepare receipt data with the structure expected by MongoDB
+    // Prepare receipt data in exact format expected by backend
     const receiptData = {
       clientId: formData.client.id,
       clientName: formData.client.name || "",
@@ -58,23 +58,19 @@ export async function submitReceiptForm(formData: ReceiptFormData, navigate: (pa
       tableData: formData.items.map((item) => ({
         itemName: item.description,
         tag: item.tag || "",
+        // Explicitly convert numeric values to strings as required by the MongoDB schema
         grossWt: item.grossWeight.toString(),
         stoneWt: item.stoneWeight.toString(),
         meltingTouch: item.meltingPercent.toString(),
-        stoneAmt: (item.stoneAmount || 0).toString(),
-        // Add totalInvoiceAmount for payment tracking
-        totalInvoiceAmount: (item.amount || 0).toString(),
+        stoneAmt: (item.stoneAmount || 0).toString()
       })),
       totals: {
-        ...totals,
-        // Adding total invoice amount calculation
-        totalInvoiceAmount: formData.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
-      },
-      // Initialize payment tracking fields
-      payments: [],
-      totalPaidAmount: 0,
-      balanceDue: formData.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
-      paymentStatus: 'Pending'
+        grossWt: totals.grossWt,
+        stoneWt: totals.stoneWt,
+        netWt: totals.netWt,
+        finalWt: totals.finalWt,
+        stoneAmt: totals.stoneAmt
+      }
     };
 
     console.log("Submitting receipt data to server:", JSON.stringify(receiptData));

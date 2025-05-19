@@ -19,11 +19,17 @@ const isProduction = process.env.NODE_ENV === 'production';
 const routeHandler = isProduction ? protect : (req, res, next) => next();
 
 // Public routes (can add protection later)
-router.route('/').get(getReceipts).post(createReceipt);
+router.route('/')
+  .get(getReceipts)
+  .post(createReceipt);  // Ensure this route is accessible
+
 router.route('/generate-voucher-id').get(getVoucherId);
 router.route('/client/:clientId').get(getReceiptsByClientId);
 router.route('/search').get(searchReceipts);
 router.route('/stats').get(routeHandler, getReceiptStats);
-router.route('/:id').get(getReceiptById).put(updateReceipt).delete(deleteReceipt);
+router.route('/:id')
+  .get(getReceiptById)
+  .put(updateReceipt)
+  .delete(deleteReceipt);
 
 module.exports = router;

@@ -42,12 +42,7 @@ const validateClient = async (clientId) => {
     return client;
   } catch (error) {
     console.log('Client validation error:', error.message);
-    // If it's not a "Client not found" error but a database error
-    if (error.message !== 'Client not found') {
-      console.error('Database error during client lookup:', error);
-      throw new Error('Database error during client validation');
-    }
-    throw error; // Re-throw the "Client not found" error
+    throw error;
   }
 };
 
@@ -85,24 +80,22 @@ const prepareReceiptItems = (tableData, items) => {
   if (tableData && Array.isArray(tableData)) {
     // Map items from tableData format to the expected model format
     receiptItems = tableData.map(item => ({
-      itemName: item.itemName,
+      itemName: item.itemName || "",
       tag: item.tag || "",
-      grossWt: parseFloat(item.grossWt) || 0,
-      stoneWt: parseFloat(item.stoneWt) || 0,
-      meltingTouch: parseFloat(item.meltingTouch) || 0,
-      stoneAmt: parseFloat(item.stoneAmt) || 0,
-      totalInvoiceAmount: parseFloat(item.totalInvoiceAmount) || 0,
+      grossWt: item.grossWt.toString(),
+      stoneWt: item.stoneWt.toString(),
+      meltingTouch: item.meltingTouch.toString(),
+      stoneAmt: item.stoneAmt ? item.stoneAmt.toString() : "0"
     }));
   } else if (items && Array.isArray(items)) {
     // Map items from the frontend format to the expected model format
     receiptItems = items.map(item => ({
-      itemName: item.description || item.itemName,
+      itemName: item.description || item.itemName || "",
       tag: item.tag || "",
-      grossWt: parseFloat(item.grossWeight || item.grossWt) || 0,
-      stoneWt: parseFloat(item.stoneWeight || item.stoneWt) || 0,
-      meltingTouch: parseFloat(item.meltingPercent || item.meltingTouch) || 0,
-      stoneAmt: parseFloat(item.stoneAmount || item.stoneAmt) || 0,
-      totalInvoiceAmount: parseFloat(item.amount || item.totalInvoiceAmount) || 0,
+      grossWt: (item.grossWeight || item.grossWt || 0).toString(),
+      stoneWt: (item.stoneWeight || item.stoneWt || 0).toString(),
+      meltingTouch: (item.meltingPercent || item.meltingTouch || 0).toString(),
+      stoneAmt: (item.stoneAmount || item.stoneAmt || 0).toString()
     }));
   }
   
