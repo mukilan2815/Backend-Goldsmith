@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -26,58 +26,81 @@ import axios from "axios";
 
 // API client setup
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
+// Types for our receipt data
+interface ReceiptItem {
+  productName: string;
+  [key: string]: any;
+  _id: string;
+}
+
+interface TransactionDetails {
+  date: string;
+  items: ReceiptItem[];
+  total?: number;
+  totalPureWeight?: number;
+  totalOrnamentsWt?: number;
+  totalStoneWeight?: number;
+  totalSubTotal?: number;
+}
+
+interface AdminReceipt {
+  _id: string;
+  clientId: string;
+  clientName: string;
+  status: string;
+  voucherId: string;
+  given: TransactionDetails;
+  received: TransactionDetails;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
 // Admin Receipt API functions
 const adminReceiptApi = {
-getAdminReceipts: async () => {
-  try {
-    const response = await api.get("/admin-receipts");
-    const data = response.data;
-    // Pick the real array from paginated vs raw
-    const list = Array.isArray(data)
-      ? data
-      : Array.isArray((data as any).receipts)
-      ? (data as any).receipts
-      : Array.isArray((data as any).adminReceipts)
-      ? (data as any).adminReceipts
-      : [];
-    return list;
-  } catch (error) {
-    console.error("Error fetching admin receipts:", error);
-    throw error;
-  }
-},
-  getAdminReceiptById: async (id: string) => {
+  getAdminReceipts: async (): Promise<AdminReceipt[]> => {
+    try {
+      const response = await api.get("/admin-receipts");
+      return response.data as AdminReceipt[];
+    } catch (error) {
+      console.error("Error fetching admin receipts:", error);
+      throw error;
+    }
+  },
+
+  getAdminReceiptById: async (id: string): Promise<AdminReceipt> => {
     try {
       const response = await api.get(`/admin-receipts/${id}`);
-      return response.data;
+      return response.data as AdminReceipt;
     } catch (error) {
       console.error(`Error fetching admin receipt ${id}:`, error);
       throw error;
     }
   },
 
-  deleteAdminReceipt: async (id: string) => {
+  deleteAdminReceipt: async (id: string): Promise<void> => {
     try {
-      const response = await api.delete(`/admin-receipts/${id}`);
-      return response.data;
+      await api.delete(`/admin-receipts/${id}`);
     } catch (error) {
       console.error(`Error deleting admin receipt ${id}:`, error);
       throw error;
     }
   },
 
-  searchAdminReceipts: async (searchParams: any) => {
+  searchAdminReceipts: async (searchParams: {
+    [key: string]: any;
+  }): Promise<AdminReceipt[]> => {
     try {
       const response = await api.get("/admin-receipts/search", {
         params: searchParams,
       });
-      return response.data;
+      return response.data as AdminReceipt[];
     } catch (error) {
       console.error("Error searching admin receipts:", error);
       throw error;
@@ -85,70 +108,52 @@ getAdminReceipts: async () => {
   },
 };
 
-interface AdminReceipt {
-  _id: string;
-  clientId: string;
-  clientName: string;
-  status: "complete" | "incomplete" | "empty";
-  voucherId: string;
-  createdAt: string;
-  given?: {
-    date: string;
-    total: number;
-    items: any[];
-  };
-  received?: {
-    date: string;
-    total: number;
-    items: any[];
-  };
-}
-
 const AdminReceiptsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [receiptsPerPage] = useState(10);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const {
-    data: adminReceipts,
+    data: adminReceipts = [],
     isLoading,
     isError,
-    refetch,
-  } = useQuery({
+  } = useQuery<AdminReceipt[]>({
     queryKey: ["adminReceipts"],
     queryFn: adminReceiptApi.getAdminReceipts,
   });
 
-  const handleDelete = async (id: string) => {
+  const deleteMutation = useMutation({
+    mutationFn: adminReceiptApi.deleteAdminReceipt,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminReceipts"] });
+      toast({
+        title: "Success",
+        description: "Admin receipt deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete admin receipt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this admin receipt?")) {
-      try {
-        await adminReceiptApi.deleteAdminReceipt(id);
-        toast({
-          title: "Success",
-          description: "Admin receipt deleted successfully",
-        });
-        refetch();
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to delete admin receipt",
-          variant: "destructive",
-        });
-      }
+      deleteMutation.mutate(id);
     }
   };
 
   // Filter receipts based on search term
-  const filteredReceipts = adminReceipts
-    ? adminReceipts.filter(
-        (receipt: AdminReceipt) =>
-          receipt.clientName
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          receipt.voucherId?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : [];
+  const filteredReceipts = adminReceipts.filter(
+    (receipt) =>
+      receipt.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      receipt.voucherId?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Calculate pagination
   const indexOfLastReceipt = page * receiptsPerPage;
@@ -160,7 +165,7 @@ const AdminReceiptsPage = () => {
   const totalPages = Math.ceil(filteredReceipts.length / receiptsPerPage);
 
   // Format date safely
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     try {
       return new Date(dateString).toLocaleDateString();
@@ -201,7 +206,10 @@ const AdminReceiptsPage = () => {
                 placeholder="Search by client name or voucher ID..."
                 className="pl-8"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // Reset to first page when searching
+                }}
               />
             </div>
           </div>
@@ -223,12 +231,14 @@ const AdminReceiptsPage = () => {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => refetch()}
+                onClick={() =>
+                  queryClient.refetchQueries({ queryKey: ["adminReceipts"] })
+                }
               >
                 Retry
               </Button>
             </div>
-          ) : currentReceipts.length > 0 ? (
+          ) : adminReceipts.length > 0 ? (
             <>
               <div className="rounded-md border overflow-x-auto">
                 <Table>
@@ -246,7 +256,7 @@ const AdminReceiptsPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {currentReceipts.map((receipt: AdminReceipt) => (
+                    {currentReceipts.map((receipt) => (
                       <TableRow key={receipt._id}>
                         <TableCell className="font-medium">
                           {receipt.voucherId || "N/A"}
@@ -302,6 +312,7 @@ const AdminReceiptsPage = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => handleDelete(receipt._id)}
+                              disabled={deleteMutation.isPending}
                             >
                               <Trash className="h-4 w-4" />
                             </Button>
@@ -313,7 +324,7 @@ const AdminReceiptsPage = () => {
                 </Table>
               </div>
 
-              {totalPages > 0 && (
+              {totalPages > 1 && (
                 <Pagination className="mt-4">
                   <PaginationContent>
                     <PaginationItem>
@@ -327,16 +338,18 @@ const AdminReceiptsPage = () => {
                       />
                     </PaginationItem>
 
-                    {[...Array(totalPages)].map((_, i) => (
-                      <PaginationItem key={i + 1}>
-                        <PaginationLink
-                          onClick={() => setPage(i + 1)}
-                          isActive={page === i + 1}
-                        >
-                          {i + 1}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (pageNumber) => (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            onClick={() => setPage(pageNumber)}
+                            isActive={page === pageNumber}
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    )}
 
                     <PaginationItem>
                       <PaginationNext
@@ -357,7 +370,9 @@ const AdminReceiptsPage = () => {
           ) : (
             <div className="py-12 text-center">
               <p className="text-lg text-muted-foreground mb-4">
-                No admin receipts found
+                {searchTerm
+                  ? "No matching admin receipts found"
+                  : "No admin receipts found"}
               </p>
               <Button
                 asChild
