@@ -45,7 +45,7 @@ npm install express mongoose dotenv cors morgan nodemon
 
 ```
 PORT=5000
-MONGO_URI=mongodb+srv://Vignesh:vignesh@cluster0.6fjqe2e.mongodb.net/goldsmith?retryWrites=true&w=majority&appName=Cluster0
+MONGO_URI=mongodb://localhost:27017/
 NODE_ENV=development
 ```
 

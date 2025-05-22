@@ -1,99 +1,77 @@
+// Updated receipt-form-submit.js
 
-import { toast } from "@/hooks/use-toast";
-import { receiptServices } from "@/services/receipt-services";
-import { ReceiptItem } from "@/models/Receipt";
-
-export interface ReceiptFormData {
-  client: {
-    id: string;
-    name: string;
-    shopName: string;
-    mobile: string;
-    address?: string;
-  };
-  date: Date;
-  metalType: string;
-  overallWeight?: number;
-  voucherId?: string;
-  items: ReceiptItem[];
-}
-
-export async function submitReceiptForm(formData: ReceiptFormData, navigate: (path: string) => void) {
-  console.log("Receipt form submission started with data:", formData);
-  
+export const submitReceiptForm = async (data, navigate) => {
   try {
-    if (!formData.client || !formData.client.id) {
-      toast({
-        variant: "destructive",
-        title: "Missing Client",
-        description: "Please select a client before creating a receipt.",
-      });
-      return false;
-    }
+    console.log("Starting submitReceiptForm with data:", data);
 
-    // Calculate totals from items
-    const totals = formData.items.reduce(
-      (acc, item) => {
-        return {
-          grossWt: acc.grossWt + (Number(item.grossWeight) || 0),
-          stoneWt: acc.stoneWt + (Number(item.stoneWeight) || 0),
-          netWt: acc.netWt + (Number(item.netWeight) || 0),
-          finalWt: acc.finalWt + (Number(item.finalWeight) || 0),
-          stoneAmt: acc.stoneAmt + (Number(item.stoneAmount) || 0),
-        };
-      },
-      { grossWt: 0, stoneWt: 0, netWt: 0, finalWt: 0, stoneAmt: 0 }
-    );
-
-    // Prepare receipt data in exact format expected by backend
-    const receiptData = {
-      clientId: formData.client.id,
-      clientName: formData.client.name || "",
-      shopName: formData.client.shopName || "",
-      phoneNumber: formData.client.mobile || "",
-      metalType: formData.metalType,
-      overallWeight: formData.overallWeight || 0,
-      issueDate: formData.date,
-      voucherId: formData.voucherId,
-      tableData: formData.items.map((item) => ({
-        itemName: item.description,
+    // Format the data according to the API requirements
+    const formattedData = {
+      clientId: data.client.id,
+      clientName: data.client.name,
+      shopName: data.client.shopName,
+      phoneNumber: data.client.mobile,
+      metalType: data.metalType,
+      overallWeight: data.overallWeight || 0,
+      issueDate: data.date.toISOString(),
+      voucherId: data.voucherId,
+      tableData: data.items.map((item) => ({
+        description: item.description,
         tag: item.tag || "",
-        // Explicitly convert numeric values to strings as required by the MongoDB schema
-        grossWt: item.grossWeight.toString(),
-        stoneWt: item.stoneWeight.toString(),
-        meltingTouch: item.meltingPercent.toString(),
-        stoneAmt: (item.stoneAmount || 0).toString()
+        grossWeight: parseFloat(item.grossWeight) || 0,
+        stoneWeight: parseFloat(item.stoneWeight) || 0,
+        meltingPercent: parseFloat(item.meltingPercent) || 0,
+        netWeight: parseFloat(item.netWeight) || 0,
+        finalWeight: parseFloat(item.finalWeight) || 0,
+        stoneAmount: parseFloat(item.stoneAmount) || 0,
       })),
       totals: {
-        grossWt: totals.grossWt,
-        stoneWt: totals.stoneWt,
-        netWt: totals.netWt,
-        finalWt: totals.finalWt,
-        stoneAmt: totals.stoneAmt
-      }
+        grossWt: data.items.reduce(
+          (sum, item) => sum + (parseFloat(item.grossWeight) || 0),
+          0
+        ),
+        stoneWt: data.items.reduce(
+          (sum, item) => sum + (parseFloat(item.stoneWeight) || 0),
+          0
+        ),
+        netWt: data.items.reduce(
+          (sum, item) => sum + (parseFloat(item.netWeight) || 0),
+          0
+        ),
+        finalWt: data.items.reduce(
+          (sum, item) => sum + (parseFloat(item.finalWeight) || 0),
+          0
+        ),
+        stoneAmt: data.items.reduce(
+          (sum, item) => sum + (parseFloat(item.stoneAmount) || 0),
+          0
+        ),
+      },
     };
 
-    console.log("Submitting receipt data to server:", JSON.stringify(receiptData));
+    console.log("Formatted data for API:", formattedData);
 
-    // Send data to the server
-    const result = await receiptServices.createReceipt(receiptData);
-    console.log("Receipt creation successful:", result);
-    
-    toast({
-      title: "Receipt Created",
-      description: `Receipt ${result.voucherId || formData.voucherId} created successfully.`,
+    // Make the API call
+    const response = await fetch("/api/receipts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formattedData),
     });
-    
-    // Navigate back to receipts page
-    navigate("/receipts");
+
+    const result = await response.json();
+    console.log("API response:", result);
+
+    if (!result.success) {
+      console.error("API error:", result.message);
+      throw new Error(result.message || "Failed to save receipt");
+    }
+
+    // Navigate to receipt details page on success
+    navigate(`/receipts/${result._id}`);
     return true;
   } catch (error) {
-    console.error("Error saving receipt:", error);
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: `Failed to save receipt: ${error.message || "Unknown error"}`,
-    });
-    return false;
+    console.error("Error in submitReceiptForm:", error);
+    throw error;
   }
-}
+};

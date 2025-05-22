@@ -1,5 +1,7 @@
+// Modified ReceiptForm component with client state persistence
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { Trash, Plus, Loader, Calendar } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -17,23 +19,23 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import {
   Popover,
   PopoverContent,
-  PopoverTrigger, 
+  PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { ReceiptItem } from "@/models/Receipt";
 import { receiptServices } from "@/services/receipt-services";
-import { submitReceiptForm } from "./receipt-form-submit";
+import { clientServices } from "@/services/api"; // Import client services
 
 // Validation schema
 const receiptItemSchema = z.object({
@@ -45,7 +47,10 @@ const receiptItemSchema = z.object({
     .number()
     .min(0, { message: "Min 0%" })
     .max(100, { message: "Max 100%" }),
-  stoneAmount: z.coerce.number().min(0, { message: "Cannot be negative" }).optional(),
+  stoneAmount: z.coerce
+    .number()
+    .min(0, { message: "Cannot be negative" })
+    .optional(),
 });
 
 const receiptFormSchema = z.object({
@@ -53,17 +58,23 @@ const receiptFormSchema = z.object({
     required_error: "Date is required",
   }),
   metalType: z.string().min(1, { message: "Metal type is required" }),
-  overallWeight: z.coerce.number().positive({ message: "Must be positive" }).optional(),
+  overallWeight: z.coerce
+    .number()
+    .positive({ message: "Must be positive" })
+    .optional(),
   unit: z.string().optional(),
-  items: z.array(receiptItemSchema).min(1, { message: "Add at least one item" }).refine(
-    (items) => {
-      return items.every((item) => item.stoneWeight <= item.grossWeight);
-    },
-    {
-      message: "Stone weight cannot exceed gross weight",
-      path: ["items"],
-    }
-  ),
+  items: z
+    .array(receiptItemSchema)
+    .min(1, { message: "Add at least one item" })
+    .refine(
+      (items) => {
+        return items.every((item) => item.stoneWeight <= item.grossWeight);
+      },
+      {
+        message: "Stone weight cannot exceed gross weight",
+        path: ["items"],
+      }
+    ),
 });
 
 type ReceiptFormValues = z.infer<typeof receiptFormSchema>;
@@ -81,11 +92,19 @@ interface ReceiptFormProps {
   previousPath?: string;
 }
 
-export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "/receipts/select-client" }: ReceiptFormProps) {
+export function ReceiptForm({
+  defaultValues,
+  client: propClient,
+  receiptId,
+  previousPath = "/receipts/select-client",
+}: ReceiptFormProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [voucherId, setVoucherId] = useState(`RC-${Math.floor(100000 + Math.random() * 900000)}`);
+  const [voucherId, setVoucherId] = useState(
+    `RC-${Math.floor(100000 + Math.random() * 900000)}`
+  );
   const [metalType, setMetalType] = useState("Gold");
   const [items, setItems] = useState<ReceiptItem[]>([
     {
@@ -104,6 +123,65 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
   ]);
   const [overallWeight, setOverallWeight] = useState(0);
 
+  // Get client from location state or props
+  const [client, setClient] = useState(propClient || location.state?.client);
+  const [isLoadingClient, setIsLoadingClient] = useState(false);
+
+  // If client ID is in URL params, fetch client data
+  useEffect(() => {
+    const fetchClientIfNeeded = async () => {
+      // If we already have client data, no need to fetch
+      if (client) return;
+
+      // Check if client ID is in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const clientId = urlParams.get("clientId");
+
+      if (clientId) {
+        setIsLoadingClient(true);
+        try {
+          // Fetch client data using the ID
+          const response = await clientServices.getClient(clientId);
+          if (response && response.client) {
+            // Format client data to match expected structure
+            const clientData = {
+              id: response.client._id,
+              clientName: response.client.clientName,
+              shopName: response.client.shopName,
+              phoneNumber: response.client.phoneNumber,
+              address: response.client.address || "",
+            };
+            setClient(clientData);
+          } else {
+            throw new Error("Client not found");
+          }
+        } catch (error) {
+          console.error("Error fetching client:", error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description:
+              "Failed to load client data. Please select a client again.",
+          });
+          // Redirect to client selection page
+          navigate(previousPath);
+        } finally {
+          setIsLoadingClient(false);
+        }
+      } else if (!location.state?.client) {
+        // No client ID in URL and no client in state, redirect to selection
+        toast({
+          variant: "destructive",
+          title: "No Client Selected",
+          description: "Please select a client before creating a receipt.",
+        });
+        navigate(previousPath);
+      }
+    };
+
+    fetchClientIfNeeded();
+  }, [propClient, location.state, navigate, previousPath, toast]);
+
   // Generate a real voucher ID when component mounts
   useEffect(() => {
     const fetchVoucherId = async () => {
@@ -117,7 +195,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
         // Keep the randomly generated one if API fails
       }
     };
-    
+
     fetchVoucherId();
   }, []);
 
@@ -144,7 +222,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
   ) => {
     const netWeight = grossWeight - stoneWeight;
     const finalWeight = (netWeight * meltingPercent) / 100;
-    
+
     return {
       netWeight,
       finalWeight,
@@ -166,7 +244,7 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
       amount: 0,
       stoneAmount: 0,
     };
-    
+
     setItems([...items, newItem]);
   };
 
@@ -189,19 +267,21 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
       items.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
-          
+
           // Recalculate derived values if needed
-          if (["grossWeight", "stoneWeight", "meltingPercent"].includes(field)) {
+          if (
+            ["grossWeight", "stoneWeight", "meltingPercent"].includes(field)
+          ) {
             const { netWeight, finalWeight } = calculateDerivedValues(
               field === "grossWeight" ? value : item.grossWeight,
               field === "stoneWeight" ? value : item.stoneWeight,
               field === "meltingPercent" ? value : item.meltingPercent
             );
-            
+
             updatedItem.netWeight = netWeight;
             updatedItem.finalWeight = finalWeight;
           }
-          
+
           return updatedItem;
         }
         return item;
@@ -220,16 +300,26 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
         stoneAmount: acc.stoneAmount + (Number(item.stoneAmount) || 0),
       };
     },
-    { grossWeight: 0, stoneWeight: 0, netWeight: 0, finalWeight: 0, stoneAmount: 0 }
+    {
+      grossWeight: 0,
+      stoneWeight: 0,
+      netWeight: 0,
+      finalWeight: 0,
+      stoneAmount: 0,
+    }
   );
 
-  // Handle form submission
-  const onSubmit = async (formData: ReceiptFormValues) => {
-    console.log("Form submission started with data:", formData);
+
+  const handleSaveClick = async () => {
+    console.log("Save button clicked");
+    console.log("Current client:", client);
+
+    // Set loading state
     setIsSubmitting(true);
-    
+
     try {
-      if (!client || !client.id) {
+      // Validate client exists - using _id property
+      if (!client || !client._id) {
         toast({
           variant: "destructive",
           title: "Missing Client",
@@ -239,46 +329,133 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
         return;
       }
 
-      // Map form data to the expected submission format
-      const submissionData = {
-        client: {
-          id: client.id,
-          name: client.clientName,
-          shopName: client.shopName,
-          mobile: client.phoneNumber,
-          address: client.address || "",
-        },
-        date: formData.date,
-        metalType: formData.metalType,
-        overallWeight: formData.overallWeight || overallWeight,
+      // Get form values
+      const formValues = form.getValues();
+      console.log("Form values:", formValues);
+
+      // Validate required fields
+      const formState = form.getFieldState("items");
+      if (formState.invalid) {
+        console.log("Form validation failed");
+        form.handleSubmit(() => {})(); // Trigger validation without submission
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Format data for API
+      const formattedData = {
+        clientId: client._id,
+        clientName: client.clientName,
+        shopName: client.shopName,
+        phoneNumber: client.phoneNumber,
+        metalType: formValues.metalType,
+        overallWeight: formValues.overallWeight || 0,
+        issueDate: formValues.date.toISOString(),
         voucherId: voucherId,
-        items: items,
+        tableData: items.map((item) => ({
+          itemName: item.description, // Added itemName field to match backend validation
+          description: item.description, // Keep description if needed
+          tag: item.tag || "",
+          grossWeight: parseFloat(item.grossWeight.toString()) || 0,
+          stoneWeight: parseFloat(item.stoneWeight.toString()) || 0,
+          meltingPercent: parseFloat(item.meltingPercent.toString()) || 0,
+          netWeight: parseFloat(item.netWeight.toString()) || 0,
+          finalWeight: parseFloat(item.finalWeight.toString()) || 0,
+          stoneAmount: parseFloat(item.stoneAmount?.toString() || "0") || 0,
+        })),
+        totals: {
+          grossWt: totals.grossWeight,
+          stoneWt: totals.stoneWeight,
+          netWt: totals.netWeight,
+          finalWt: totals.finalWeight,
+          stoneAmt: totals.stoneAmount,
+        },
       };
 
-      console.log("Submitting receipt:", JSON.stringify(submissionData));
-      
-      // Use the dedicated submit function
-      const result = await submitReceiptForm(submissionData, navigate);
-      
-      if (!result) {
-        setIsSubmitting(false);
+      console.log("Sending data to API:", formattedData);
+
+      // Updated API URL with correct port (5000)
+      const API_URL = "http://localhost:5000/api/receipts";
+      console.log("Using API URL:", API_URL);
+
+      // Make API call with the correct URL
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedData),
+      });
+
+      // Handle response
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API error response:", errorText);
+        throw new Error(`API error: ${response.status} ${errorText}`);
       }
-      // No need to set isSubmitting to false on success as the page will navigate away
-      
+
+      const result = await response.json();
+      console.log("API success response:", result);
+
+      if (!result.success) {
+        console.error("API returned error:", result.message);
+        throw new Error(result.message || "Failed to save receipt");
+      }
+
+      // Show success message
+      toast({
+        title: "Success",
+        description: `Receipt saved successfully with ID: ${result._id}`,
+      });
+
+      // Navigate to receipt details page
+      navigate(`/receipts/${result._id}`);
     } catch (error) {
-      console.error("Form submission error:", error);
+      console.error("Error saving receipt:", error);
+
+      // Show error message
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to save receipt. Please try again.",
+        title: "Error Saving Receipt",
+        description:
+          error.message || "Failed to save receipt. Please try again.",
       });
+
       setIsSubmitting(false);
     }
   };
 
+  // If still loading client data, show loading state
+  if (isLoadingClient) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Loading client data...</span>
+      </div>
+    );
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form className="space-y-6">
+        {/* Client Info Banner */}
+        {client && (
+          <div className="bg-primary/10 p-4 rounded-md mb-4">
+            <h3 className="font-medium">Selected Client:</h3>
+            <div className="flex flex-wrap gap-x-6 mt-1">
+              <span>
+                <strong>Shop:</strong> {client.shopName}
+              </span>
+              <span>
+                <strong>Name:</strong> {client.clientName}
+              </span>
+              <span>
+                <strong>Phone:</strong> {client.phoneNumber}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Receipt Details */}
         <div className="bg-background/50 p-6 rounded-md border">
           <div className="flex justify-between items-center mb-4">
@@ -301,7 +478,9 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                       <FormControl>
                         <Button
                           variant={"outline"}
-                          className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                          className={`w-full pl-3 text-left font-normal ${
+                            !field.value ? "text-muted-foreground" : ""
+                          }`}
                         >
                           {field.value ? (
                             format(field.value, "PPP")
@@ -430,15 +609,33 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted/50">
-                  <th className="p-2 text-left font-medium text-muted-foreground">Description</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Tag</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Gross Wt.</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Stone Wt.</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Net Wt.</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Melting %</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Final Wt.</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Stone Amt.</th>
-                  <th className="p-2 text-left font-medium text-muted-foreground">Actions</th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Description
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Tag
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Gross Wt.
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Stone Wt.
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Net Wt.
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Melting %
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Final Wt.
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Stone Amt.
+                  </th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -448,14 +645,18 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                       <Input
                         placeholder="Item description"
                         value={item.description}
-                        onChange={(e) => updateItem(item.id, "description", e.target.value)}
+                        onChange={(e) =>
+                          updateItem(item.id, "description", e.target.value)
+                        }
                       />
                     </td>
                     <td className="p-2">
                       <Input
                         placeholder="Tag"
                         value={item.tag}
-                        onChange={(e) => updateItem(item.id, "tag", e.target.value)}
+                        onChange={(e) =>
+                          updateItem(item.id, "tag", e.target.value)
+                        }
                       />
                     </td>
                     <td className="p-2">
@@ -465,7 +666,13 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                         step="0.01"
                         min="0"
                         value={item.grossWeight}
-                        onChange={(e) => updateItem(item.id, "grossWeight", parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            item.id,
+                            "grossWeight",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                       />
                     </td>
                     <td className="p-2">
@@ -475,7 +682,13 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                         step="0.01"
                         min="0"
                         value={item.stoneWeight}
-                        onChange={(e) => updateItem(item.id, "stoneWeight", parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            item.id,
+                            "stoneWeight",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                       />
                     </td>
                     <td className="p-2">
@@ -493,7 +706,13 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                         min="0"
                         max="100"
                         value={item.meltingPercent}
-                        onChange={(e) => updateItem(item.id, "meltingPercent", parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            item.id,
+                            "meltingPercent",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                       />
                     </td>
                     <td className="p-2">
@@ -510,7 +729,13 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                         step="0.01"
                         min="0"
                         value={item.stoneAmount || 0}
-                        onChange={(e) => updateItem(item.id, "stoneAmount", parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            item.id,
+                            "stoneAmount",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                       />
                     </td>
                     <td className="p-2">
@@ -529,22 +754,12 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
                   <td colSpan={2} className="p-2 text-right">
                     Totals:
                   </td>
-                  <td className="p-2">
-                    {totals.grossWeight.toFixed(2)}
-                  </td>
-                  <td className="p-2">
-                    {totals.stoneWeight.toFixed(2)}
-                  </td>
-                  <td className="p-2">
-                    {totals.netWeight.toFixed(2)}
-                  </td>
+                  <td className="p-2">{totals.grossWeight.toFixed(2)}</td>
+                  <td className="p-2">{totals.stoneWeight.toFixed(2)}</td>
+                  <td className="p-2">{totals.netWeight.toFixed(2)}</td>
                   <td className="p-2"></td>
-                  <td className="p-2">
-                    {totals.finalWeight.toFixed(2)}
-                  </td>
-                  <td className="p-2">
-                    {totals.stoneAmount.toFixed(2)}
-                  </td>
+                  <td className="p-2">{totals.finalWeight.toFixed(2)}</td>
+                  <td className="p-2">{totals.stoneAmount.toFixed(2)}</td>
                   <td className="p-2"></td>
                 </tr>
               </tbody>
@@ -561,9 +776,10 @@ export function ReceiptForm({ defaultValues, client, receiptId, previousPath = "
           >
             Back
           </Button>
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
+          <Button
+            type="button"
+            disabled={isSubmitting || !client}
+            onClick={handleSaveClick}
           >
             {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             Save Receipt

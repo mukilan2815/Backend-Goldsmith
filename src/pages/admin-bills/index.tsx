@@ -1,17 +1,18 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  Card, CardContent, CardHeader, CardTitle 
-} from "@/components/ui/card";
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { adminBillServices } from "@/services/api-admin";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, Trash, Edit, Search } from "lucide-react";
+import { Eye, Trash, Edit, Search, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Pagination,
@@ -21,81 +22,177 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import axios from "axios";
 
-interface AdminBill {
+// API client setup
+const api = axios.create({
+  baseURL: "/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Admin Receipt API functions
+const adminReceiptApi = {
+getAdminReceipts: async () => {
+  try {
+    const response = await api.get("/admin-receipts");
+    const data = response.data;
+    // Pick the real array from paginated vs raw
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray((data as any).receipts)
+      ? (data as any).receipts
+      : Array.isArray((data as any).adminReceipts)
+      ? (data as any).adminReceipts
+      : [];
+    return list;
+  } catch (error) {
+    console.error("Error fetching admin receipts:", error);
+    throw error;
+  }
+},
+  getAdminReceiptById: async (id: string) => {
+    try {
+      const response = await api.get(`/admin-receipts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching admin receipt ${id}:`, error);
+      throw error;
+    }
+  },
+
+  deleteAdminReceipt: async (id: string) => {
+    try {
+      const response = await api.delete(`/admin-receipts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting admin receipt ${id}:`, error);
+      throw error;
+    }
+  },
+
+  searchAdminReceipts: async (searchParams: any) => {
+    try {
+      const response = await api.get("/admin-receipts/search", {
+        params: searchParams,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error searching admin receipts:", error);
+      throw error;
+    }
+  },
+};
+
+interface AdminReceipt {
   _id: string;
+  clientId: string;
   clientName: string;
-  status: 'complete' | 'incomplete' | 'empty';
+  status: "complete" | "incomplete" | "empty";
   voucherId: string;
   createdAt: string;
-  given: {
+  given?: {
     date: string;
     total: number;
+    items: any[];
   };
-  received: {
+  received?: {
     date: string;
     total: number;
+    items: any[];
   };
 }
 
-const AdminBillsPage = () => {
+const AdminReceiptsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [billsPerPage] = useState(10);
+  const [receiptsPerPage] = useState(10);
   const { toast } = useToast();
-  
+
   const {
-    data: adminBills,
+    data: adminReceipts,
     isLoading,
     isError,
-    refetch
+    refetch,
   } = useQuery({
-    queryKey: ['adminBills'],
-    queryFn: () => adminBillServices.getAdminBills(),
+    queryKey: ["adminReceipts"],
+    queryFn: adminReceiptApi.getAdminReceipts,
   });
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this admin bill?')) {
+    if (window.confirm("Are you sure you want to delete this admin receipt?")) {
       try {
-        await adminBillServices.deleteAdminBill(id);
+        await adminReceiptApi.deleteAdminReceipt(id);
         toast({
           title: "Success",
-          description: "Admin bill deleted successfully",
+          description: "Admin receipt deleted successfully",
         });
         refetch();
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to delete admin bill",
+          description: "Failed to delete admin receipt",
           variant: "destructive",
         });
       }
     }
   };
 
-  // Filter bills based on search term
-  const filteredBills = adminBills 
-    ? adminBills.filter((bill: AdminBill) => 
-        bill.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        bill.voucherId.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter receipts based on search term
+  const filteredReceipts = adminReceipts
+    ? adminReceipts.filter(
+        (receipt: AdminReceipt) =>
+          receipt.clientName
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          receipt.voucherId?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : [];
-  
+
   // Calculate pagination
-  const indexOfLastBill = page * billsPerPage;
-  const indexOfFirstBill = indexOfLastBill - billsPerPage;
-  const currentBills = filteredBills.slice(indexOfFirstBill, indexOfLastBill);
-  const totalPages = Math.ceil(filteredBills.length / billsPerPage);
+  const indexOfLastReceipt = page * receiptsPerPage;
+  const indexOfFirstReceipt = indexOfLastReceipt - receiptsPerPage;
+  const currentReceipts = filteredReceipts.slice(
+    indexOfFirstReceipt,
+    indexOfLastReceipt
+  );
+  const totalPages = Math.ceil(filteredReceipts.length / receiptsPerPage);
+
+  // Format date safely
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
+  // Calculate balance
+  const calculateBalance = (receipt: AdminReceipt) => {
+    const givenTotal = receipt.given?.total || 0;
+    const receivedTotal = receipt.received?.total || 0;
+    return (givenTotal - receivedTotal).toFixed(2);
+  };
 
   return (
     <div className="container p-6 mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-serif font-bold">Admin Bills</h1>
+        <h1 className="text-3xl font-serif font-bold">Admin Receipts</h1>
+        <Button
+          asChild
+          className="bg-yellow-400 hover:bg-yellow-500 text-black"
+        >
+          <Link to="/admin-receipts/new">
+            <Plus className="mr-2 h-4 w-4" /> New Receipt
+          </Link>
+        </Button>
       </div>
-      
+
       <Card>
         <CardHeader>
-          <CardTitle>Admin Bills</CardTitle>
+          <CardTitle>Admin Receipts</CardTitle>
           <div className="flex items-center gap-2 mt-4">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -111,14 +208,29 @@ const AdminBillsPage = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-center py-4">Loading...</p>
+            <div className="text-center py-8">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+              <p className="mt-2">Loading receipts...</p>
+            </div>
           ) : isError ? (
-            <p className="text-center py-4 text-destructive">
-              Error loading admin bills. Please try again later.
-            </p>
-          ) : currentBills.length > 0 ? (
+            <div className="text-center py-8 text-destructive">
+              <p className="text-lg font-medium">
+                Error loading admin receipts
+              </p>
+              <p className="mt-2">
+                Please try again later or check your connection
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => refetch()}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : currentReceipts.length > 0 ? (
             <>
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -126,46 +238,70 @@ const AdminBillsPage = () => {
                       <TableHead>Client Name</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Given Date</TableHead>
+                      <TableHead>Given Total</TableHead>
                       <TableHead>Received Date</TableHead>
+                      <TableHead>Received Total</TableHead>
+                      <TableHead>Balance</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {currentBills.map((bill: AdminBill) => (
-                      <TableRow key={bill._id}>
-                        <TableCell className="font-medium">{bill.voucherId}</TableCell>
-                        <TableCell>{bill.clientName}</TableCell>
+                    {currentReceipts.map((receipt: AdminReceipt) => (
+                      <TableRow key={receipt._id}>
+                        <TableCell className="font-medium">
+                          {receipt.voucherId || "N/A"}
+                        </TableCell>
+                        <TableCell>{receipt.clientName || "N/A"}</TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-                            bill.status === 'complete' ? 'bg-green-100 text-green-800' :
-                            bill.status === 'incomplete' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {bill.status}
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs capitalize ${
+                              receipt.status === "complete"
+                                ? "bg-green-100 text-green-800"
+                                : receipt.status === "incomplete"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {receipt.status || "unknown"}
                           </span>
                         </TableCell>
+                        <TableCell>{formatDate(receipt.given?.date)}</TableCell>
                         <TableCell>
-                          {new Date(bill.given.date).toLocaleDateString()}
+                          {receipt.given?.total?.toFixed(2) || "0.00"}
                         </TableCell>
                         <TableCell>
-                          {new Date(bill.received.date).toLocaleDateString()}
+                          {formatDate(receipt.received?.date)}
+                        </TableCell>
+                        <TableCell>
+                          {receipt.received?.total?.toFixed(2) || "0.00"}
+                        </TableCell>
+                        <TableCell
+                          className={`font-medium ${
+                            parseFloat(calculateBalance(receipt)) > 0
+                              ? "text-green-600"
+                              : parseFloat(calculateBalance(receipt)) < 0
+                              ? "text-red-600"
+                              : ""
+                          }`}
+                        >
+                          {calculateBalance(receipt)}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
                             <Button variant="outline" size="sm" asChild>
-                              <Link to={`/admin-receipts/${bill._id}`}>
+                              <Link to={`/admin-receipts/${receipt._id}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button variant="outline" size="sm" asChild>
-                              <Link to={`/admin-receipts/${bill._id}/edit`}>
+                              <Link to={`/admin-receipts/edit/${receipt._id}`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleDelete(bill._id)}
+                              onClick={() => handleDelete(receipt._id)}
                             >
                               <Trash className="h-4 w-4" />
                             </Button>
@@ -176,17 +312,21 @@ const AdminBillsPage = () => {
                   </TableBody>
                 </Table>
               </div>
-              
+
               {totalPages > 0 && (
                 <Pagination className="mt-4">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
-                        onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                        className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                        className={
+                          page === 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
-                    
+
                     {[...Array(totalPages)].map((_, i) => (
                       <PaginationItem key={i + 1}>
                         <PaginationLink
@@ -197,11 +337,17 @@ const AdminBillsPage = () => {
                         </PaginationLink>
                       </PaginationItem>
                     ))}
-                    
+
                     <PaginationItem>
                       <PaginationNext
-                        onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-                        className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        onClick={() =>
+                          setPage((prev) => Math.min(prev + 1, totalPages))
+                        }
+                        className={
+                          page === totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
                   </PaginationContent>
@@ -209,8 +355,18 @@ const AdminBillsPage = () => {
               )}
             </>
           ) : (
-            <div className="py-4 text-center">
-              <p>No admin bills found</p>
+            <div className="py-12 text-center">
+              <p className="text-lg text-muted-foreground mb-4">
+                No admin receipts found
+              </p>
+              <Button
+                asChild
+                className="bg-yellow-400 hover:bg-yellow-500 text-black"
+              >
+                <Link to="/admin-receipts/new">
+                  <Plus className="mr-2 h-4 w-4" /> Create New Receipt
+                </Link>
+              </Button>
             </div>
           )}
         </CardContent>
@@ -219,4 +375,4 @@ const AdminBillsPage = () => {
   );
 };
 
-export default AdminBillsPage;
+export default AdminReceiptsPage;
