@@ -91,6 +91,22 @@ const getReceiptsByClientId = async (req, res) => {
 // @access  Private
 const createReceipt = async (req, res) => {
   try {
+    // Map tableData to items if present
+    if (req.body.tableData && !req.body.items) {
+      req.body.items = req.body.tableData.map((item) => ({
+        itemName: item.itemName,
+        description: item.description,
+        tag: item.tag,
+        grossWt: item.grossWeight,
+        stoneWt: item.stoneWeight,
+        meltingPercent: item.meltingPercent,
+        netWt: item.netWeight,
+        finalWt: item.finalWeight,
+        stoneAmt: item.stoneAmount,
+        totalInvoiceAmount: item.totalInvoiceAmount || 0,
+      }));
+    }
+
     // Calculate totals if not provided
     if (!req.body.totals && req.body.items) {
       req.body.totals = calculateTotals(req.body.items);
@@ -121,16 +137,25 @@ const createReceipt = async (req, res) => {
 
 // Helper function to calculate receipt totals
 const calculateTotals = (items) => {
-  return items.reduce((totals, item) => {
-    totals.grossWt = (totals.grossWt || 0) + (item.grossWt || 0);
-    totals.stoneWt = (totals.stoneWt || 0) + (item.stoneWt || 0);
-    totals.netWt = (totals.netWt || 0) + (item.netWt || 0);
-    totals.finalWt = (totals.finalWt || 0) + (item.finalWt || 0);
-    totals.stoneAmt = (totals.stoneAmt || 0) + (item.stoneAmt || 0);
-    totals.totalInvoiceAmount =
-      (totals.totalInvoiceAmount || 0) + (item.totalInvoiceAmount || 0);
-    return totals;
-  }, {});
+  return items.reduce(
+    (totals, item) => {
+      totals.grossWt += item.grossWt || 0;
+      totals.stoneWt += item.stoneWt || 0;
+      totals.netWt += item.netWt || 0;
+      totals.finalWt += item.finalWt || 0;
+      totals.stoneAmt += item.stoneAmt || 0;
+      totals.totalInvoiceAmount += item.totalInvoiceAmount || 0;
+      return totals;
+    },
+    {
+      grossWt: 0,
+      stoneWt: 0,
+      netWt: 0,
+      finalWt: 0,
+      stoneAmt: 0,
+      totalInvoiceAmount: 0,
+    }
+  );
 };
 
 // @desc    Update receipt
