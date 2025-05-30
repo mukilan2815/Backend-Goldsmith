@@ -144,6 +144,7 @@ const calculateTotals = (items) => {
       totals.netWt += item.netWt || 0;
       totals.finalWt += item.finalWt || 0;
       totals.stoneAmt += item.stoneAmt || 0;
+      totals.meltingPercent = item.meltingPercent || 0;
       totals.totalInvoiceAmount += item.totalInvoiceAmount || 0;
       return totals;
     },
@@ -153,6 +154,7 @@ const calculateTotals = (items) => {
       netWt: 0,
       finalWt: 0,
       stoneAmt: 0,
+      meltingPercent: 0,
       totalInvoiceAmount: 0,
     }
   );
