@@ -1,5 +1,4 @@
-
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const givenItemSchema = mongoose.Schema({
   productName: {
@@ -27,27 +26,21 @@ const givenItemSchema = mongoose.Schema({
 const receivedItemSchema = mongoose.Schema({
   productName: {
     type: String,
-    required: true,
   },
   finalOrnamentsWt: {
     type: String,
-    required: true,
   },
   stoneWeight: {
     type: String,
-    required: true,
   },
   makingChargePercent: {
     type: String,
-    required: true,
   },
   subTotal: {
     type: Number,
-    required: true,
   },
   total: {
     type: Number,
-    required: true,
   },
 });
 
@@ -56,7 +49,7 @@ const adminReceiptSchema = mongoose.Schema(
     clientId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: 'Client',
+      ref: "Client",
     },
     clientName: {
       type: String,
@@ -80,35 +73,29 @@ const adminReceiptSchema = mongoose.Schema(
     received: {
       date: {
         type: Date,
-        required: true,
       },
       items: [receivedItemSchema],
       totalOrnamentsWt: {
         type: Number,
-        required: true,
       },
       totalStoneWeight: {
         type: Number,
-        required: true,
       },
       totalSubTotal: {
         type: Number,
-        required: true,
       },
       total: {
         type: Number,
-        required: true,
       },
     },
     status: {
       type: String,
-      enum: ['complete', 'incomplete', 'empty'],
-      default: 'incomplete',
+      enum: ["complete", "incomplete", "empty"],
+      default: "incomplete",
     },
     voucherId: {
       type: String,
       unique: true,
-      required: true,
     },
   },
   {
@@ -117,10 +104,10 @@ const adminReceiptSchema = mongoose.Schema(
 );
 
 // Create index for searching
-adminReceiptSchema.index({ clientName: 'text' });
-adminReceiptSchema.index({ 'given.date': 1, 'received.date': 1 });
+adminReceiptSchema.index({ clientName: "text" });
+adminReceiptSchema.index({ "given.date": 1, "received.date": 1 });
 adminReceiptSchema.index({ voucherId: 1 });
 
-const AdminReceipt = mongoose.model('AdminReceipt', adminReceiptSchema);
+const AdminReceipt = mongoose.model("AdminReceipt", adminReceiptSchema);
 
 module.exports = AdminReceipt;

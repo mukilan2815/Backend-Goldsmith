@@ -97,12 +97,12 @@ const createReceipt = async (req, res) => {
         itemName: item.itemName,
         description: item.description,
         tag: item.tag,
-        grossWt: item.grossWeight,
-        stoneWt: item.stoneWeight,
+        grossWt: item.grossWt,
+        stoneWt: item.stoneWt,
         meltingPercent: item.meltingPercent,
-        netWt: item.netWeight,
-        finalWt: item.finalWeight,
-        stoneAmt: item.stoneAmount,
+        netWt: item.netWt,
+        finalWt: item.finalWt,
+        stoneAmt: item.stoneAmt,
         totalInvoiceAmount: item.totalInvoiceAmount || 0,
       }));
     }
