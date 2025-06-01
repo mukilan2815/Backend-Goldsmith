@@ -8,7 +8,14 @@ const connectDB = async () => {
 
     console.log("Connecting to MongoDB Atlas...");
 
-    const conn = await mongoose.connect(mongoURI);
+    const conn = await mongoose.connect(mongoURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      retryWrites: true,
+      connectTimeoutMS: 30000, // 30 seconds
+      socketTimeoutMS: 45000, // 45 seconds
+      maxPoolSize: 50, // Maintain up to 50 socket connections
+    });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
 
