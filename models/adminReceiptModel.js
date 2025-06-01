@@ -97,6 +97,25 @@ const adminReceiptSchema = mongoose.Schema(
       type: String,
       unique: true,
     },
+    manualCalculations: {
+      givenTotal: {
+        type: Number,
+        default: 0,
+      },
+      receivedTotal: {
+        type: Number,
+        default: 0,
+      },
+      operation: {
+        type: String,
+        enum: ["subtract-given-received", "subtract-received-given", "add"],
+        default: "subtract-given-received",
+      },
+      result: {
+        type: Number,
+        default: 0,
+      },
+    },
   },
   {
     timestamps: true,
