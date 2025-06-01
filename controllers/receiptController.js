@@ -99,7 +99,7 @@ const createReceipt = async (req, res) => {
         tag: item.tag,
         grossWt: item.grossWt,
         stoneWt: item.stoneWt,
-        meltingPercent: item.meltingPercent,
+        meltingTouch: item.meltingPercent || item.meltingTouch || 0, // Handle both field names
         netWt: item.netWt,
         finalWt: item.finalWt,
         stoneAmt: item.stoneAmt,
@@ -144,7 +144,7 @@ const calculateTotals = (items) => {
       totals.netWt += item.netWt || 0;
       totals.finalWt += item.finalWt || 0;
       totals.stoneAmt += item.stoneAmt || 0;
-      totals.meltingPercent = item.meltingPercent || 0;
+      totals.meltingTouch = item.meltingTouch || 0; // Changed from meltingPercent to meltingTouch
       totals.totalInvoiceAmount += item.totalInvoiceAmount || 0;
       return totals;
     },
@@ -154,7 +154,7 @@ const calculateTotals = (items) => {
       netWt: 0,
       finalWt: 0,
       stoneAmt: 0,
-      meltingPercent: 0,
+      meltingTouch: 0, // Changed from meltingPercent to meltingTouch
       totalInvoiceAmount: 0,
     }
   );
