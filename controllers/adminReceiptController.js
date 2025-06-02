@@ -7,7 +7,7 @@ const generateVoucherId = async () => {
   const date = new Date();
   const year = date.getFullYear().toString().substr(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const prefix = `GA-${year}${month}`;
+  const prefix = `AD-${year}${month}`;
 
   // Find the latest receipt with this prefix
   const latestReceipt = await AdminReceipt.findOne({
