@@ -1,59 +1,50 @@
-import express from "express";
-import dotenv from "dotenv";
-import cors from "cors";
-import connectDB from "./config/db.js";
-import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
-import path from "path";
-import { fileURLToPath } from "url";
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const morgan = require("morgan");
+const connectDB = require("./config/db");
+const { notFound, errorHandler } = require("./middleware/errorMiddleware");
+const path = require("path");
 
 // Load environment variables
 dotenv.config();
 
-// For __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Connect to MongoDB
 connectDB();
 
-// Initialize Express app
 const app = express();
 
 // Middleware
 app.use(express.json());
 
-// Configure CORS to allow requests from your frontend's origin
+// Configure CORS to allow requests from any origin during development
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "https://your-production-frontend-domain.com"
-        : "http://localhost:8000",
+    origin: "*", // Allow all origins in development
     credentials: true,
   })
 );
 
-// Import routes
-import clientRoutes from "./routes/clientRoutes.js";
-import receiptRoutes from "./routes/receiptRoutes.js";
-import analyticsRoutes from "./routes/analyticsRoutes.js";
-import uploadRoutes from "./routes/uploadRoutes.js";
-import adminReceiptRoutes from "./routes/adminReceiptRoutes.js";
-import billRoutes from "./routes/billRoutes.js";
-import adminBillRoutes from "./routes/adminBillRoutes.js";
+// Logging in development
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
 
-// Use routes
-app.use("/api/clients", clientRoutes);
-app.use("/api/receipts", receiptRoutes);
-app.use("/api/analytics", analyticsRoutes);
-app.use("/api/uploads", uploadRoutes);
-app.use("/api/admin-receipts", adminReceiptRoutes);
-app.use("/api/bills", billRoutes);
-app.use("/api/admin-bills", adminBillRoutes);
+// Routes
+app.use("/api/clients", require("./routes/clientRoutes"));
+app.use("/api/receipts", require("./routes/receiptRoutes"));
+app.use("/api/analytics", require("./routes/analyticsRoutes"));
+app.use("/api/uploads", require("./routes/uploadRoutes"));
+app.use("/api/admin-receipts", require("./routes/adminReceiptRoutes"));
+app.use("/api/bills", require("./routes/billRoutes"));
+app.use("/api/admin-bills", require("./routes/adminBillRoutes"));
 
 // Serve static assets in production
 if (process.env.NODE_ENV === "production") {
+  // Set static folder
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+  // Any route not covered will return the frontend
   app.get("*", (req, res) => {
     res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
   });
@@ -68,5 +59,5 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
