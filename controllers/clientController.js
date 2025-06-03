@@ -120,6 +120,7 @@ const updateClient = asyncHandler(async (req, res) => {
     client.address = address || client.address;
     client.email = email !== undefined ? email : client.email;
     client.active = active !== undefined ? active : client.active;
+    client.balance = req.body.balance || client.balance;
 
     const updatedClient = await client.save();
 
@@ -132,6 +133,7 @@ const updateClient = asyncHandler(async (req, res) => {
             "clientInfo.shopName": updatedClient.shopName,
             "clientInfo.clientName": updatedClient.clientName,
             "clientInfo.phoneNumber": updatedClient.phoneNumber,
+            "clientInfo.balance": updatedClient.balance,
           },
         }
       );
