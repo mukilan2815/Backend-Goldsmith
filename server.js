@@ -20,7 +20,7 @@ app.use(express.json());
 // Configure CORS to allow requests from any origin during development
 app.use(
   cors({
-    origin: "*", // Allow all origins in development
+    origin: process.env.CORS_ORIGIN || "*", // Set allowed origin from env or allow all in development
     credentials: true,
   })
 );
@@ -45,11 +45,11 @@ if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
   // Any route not covered will return the frontend
-  app.get("*", (req, res) => {
+  app.get("*", (_, res) => {
     res.sendFile(path.resolve(__dirname, "../frontend", "dist", "index.html"));
   });
 } else {
-  app.get("/", (req, res) => {
+  app.get("/", (_, res) => {
     res.send("API is running...");
   });
 }
