@@ -7,7 +7,7 @@ const generateVoucherId = async () => {
   const date = new Date();
   const year = date.getFullYear().toString().substr(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const prefix = `WK`;
+  const prefix = `WK-${year}${month}`;
 
   // Find the latest receipt with this prefix
   const latestReceipt = await AdminReceipt.findOne({
@@ -17,8 +17,11 @@ const generateVoucherId = async () => {
   let nextNumber = 1;
   if (latestReceipt) {
     // Extract the number from the latest receipt ID
-    const latestNumber = parseInt(latestReceipt.voucherId.split("-")[2]);
-    nextNumber = latestNumber + 1;
+    const parts = latestReceipt.voucherId.split("-");
+    const latestNumber = parseInt(parts[2], 10);
+    if (!isNaN(latestNumber)) {
+      nextNumber = latestNumber + 1;
+    }
   }
 
   // Format the number with leading zeros
