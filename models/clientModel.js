@@ -1,5 +1,4 @@
-
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const clientSchema = mongoose.Schema(
   {
@@ -17,12 +16,12 @@ const clientSchema = mongoose.Schema(
       trim: true,
       // Simple phone validation that allows different formats
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           // Allow empty as it's optional, or validate format if provided
-          return v === '' || /^\+?[0-9]{10,15}$/.test(v);
+          return v === "" || /^\+?[0-9]{10,15}$/.test(v);
         },
-        message: props => `${props.value} is not a valid phone number!`
-      }
+        message: (props) => `${props.value} is not a valid phone number!`,
+      },
     },
     address: {
       type: String,
@@ -30,12 +29,16 @@ const clientSchema = mongoose.Schema(
     },
     email: {
       type: String,
-      default: '',
+      default: "",
       trim: true,
     },
     active: {
       type: Boolean,
       default: true,
+    },
+    balance: {
+      type: Number,
+      default: 0,
     },
   },
   {
@@ -44,12 +47,12 @@ const clientSchema = mongoose.Schema(
 );
 
 // Add text index for search functionality
-clientSchema.index({ 
-  clientName: 'text', 
-  shopName: 'text', 
-  phoneNumber: 'text' 
+clientSchema.index({
+  clientName: "text",
+  shopName: "text",
+  phoneNumber: "text",
 });
 
-const Client = mongoose.model('Client', clientSchema);
+const Client = mongoose.model("Client", clientSchema);
 
 module.exports = Client;
