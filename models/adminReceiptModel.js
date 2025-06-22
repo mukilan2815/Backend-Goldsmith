@@ -21,6 +21,15 @@ const givenItemSchema = mongoose.Schema({
     type: Number,
     required: true,
   },
+  tag: {
+    type: String,
+    default: "", // Add this field with default empty string
+  },
+  id: {
+    // Ensure this field exists for frontend reference
+    type: String,
+    required: true,
+  },
 });
 
 const receivedItemSchema = mongoose.Schema({
@@ -41,6 +50,15 @@ const receivedItemSchema = mongoose.Schema({
   },
   total: {
     type: Number,
+  },
+  mc: {
+    type: Number,
+    default: 0, // Default to 0 if not provided
+  },
+  id: {
+    // Consistent with given items
+    type: String,
+    required: true,
   },
 });
 
