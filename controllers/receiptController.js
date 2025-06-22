@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Receipt = require("../models/receiptModel");
+const Client = require("../models/clientModel"); // Assuming the Client model is in the same directory
 
 // @desc    Get all receipts
 // @route   GET /api/receipts
@@ -91,28 +92,54 @@ const getReceiptsByClientId = async (req, res) => {
 // @access  Private
 const createReceipt = async (req, res) => {
   try {
-    // Map tableData to items if present
-    if (req.body.tableData && !req.body.items) {
-      req.body.items = req.body.tableData.map((item) => ({
-        itemName: item.itemName,
-        description: item.description,
-        tag: item.tag,
-        grossWt: item.grossWt,
-        stoneWt: item.stoneWt,
-        meltingTouch: item.meltingPercent || item.meltingTouch || 0, // Handle both field names
-        netWt: item.netWt,
-        finalWt: item.finalWt,
-        stoneAmt: item.stoneAmt,
-        totalInvoiceAmount: item.totalInvoiceAmount || 0,
-      }));
+    // Get client's current balance
+    const client = await Client.findById(req.body.clientId);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: "Client not found",
+      });
     }
 
-    // Calculate totals if not provided
-    if (!req.body.totals && req.body.items) {
-      req.body.totals = calculateTotals(req.body.items);
+    // Prepare givenItems from possible payload keys (make a copy to avoid mutating input)
+    let givenItems =
+      (req.body.items && [...req.body.items]) ||
+      (req.body.givenItems && [...req.body.givenItems]) ||
+      (req.body.tableData && [...req.body.tableData]) ||
+      [];
+
+    // Add previous balance as first given item if balance exists
+    if (client.balance > 0) {
+      givenItems.unshift({
+        itemName: "Previous Balance",
+        tag: "BALANCE",
+        grossWt: client.balance,
+        stoneWt: 0,
+        meltingTouch: 100, // Assume 100% for previous balance
+        netWt: client.balance,
+        finalWt: client.balance,
+        stoneAmt: 0,
+      });
     }
 
-    const receipt = await Receipt.create(req.body);
+    // Prepare receivedItems
+    const receivedItems =
+      (req.body.receivedData && [...req.body.receivedData]) ||
+      (req.body.receivedItems && [...req.body.receivedItems]) ||
+      [];
+
+    const receiptData = {
+      clientId: req.body.clientId,
+      clientInfo: req.body.clientInfo,
+      metalType: req.body.metalType,
+      issueDate: new Date(req.body.issueDate),
+      voucherId: req.body.voucherId,
+      givenItems,
+      receivedItems,
+      previousBalance: client.balance,
+    };
+
+    const receipt = await Receipt.create(receiptData);
 
     res.status(201).json({
       success: true,
@@ -135,39 +162,18 @@ const createReceipt = async (req, res) => {
   }
 };
 
-// Helper function to calculate receipt totals
-const calculateTotals = (items) => {
-  return items.reduce(
-    (totals, item) => {
-      totals.grossWt += item.grossWt || 0;
-      totals.stoneWt += item.stoneWt || 0;
-      totals.netWt += item.netWt || 0;
-      totals.finalWt += item.finalWt || 0;
-      totals.stoneAmt += item.stoneAmt || 0;
-      totals.meltingTouch = item.meltingTouch || 0; // Changed from meltingPercent to meltingTouch
-      totals.totalInvoiceAmount += item.totalInvoiceAmount || 0;
-      return totals;
-    },
-    {
-      grossWt: 0,
-      stoneWt: 0,
-      netWt: 0,
-      finalWt: 0,
-      stoneAmt: 0,
-      meltingTouch: 0, // Changed from meltingPercent to meltingTouch
-      totalInvoiceAmount: 0,
-    }
-  );
-};
-
-// @desc    Update receipt
-// @route   PUT /api/receipts/:id
-// @access  Private
 const updateReceipt = async (req, res) => {
   try {
+    // Map frontend data to our model structure
+    const updateData = {
+      ...req.body,
+      givenItems: req.body.items || req.body.givenItems || req.body.tableData,
+      receivedItems: req.body.receivedData || req.body.receivedItems,
+    };
+
     const updatedReceipt = await Receipt.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body, updatedAt: new Date() },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -352,8 +358,31 @@ const getReceiptStats = async (req, res) => {
     });
   }
 };
+// Add this new method to get client balance
+const getClientBalance = async (req, res) => {
+  try {
+    const client = await Client.findById(req.params.clientId);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: "Client not found",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      balance: client.balance,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
+  getClientBalance,
   getReceipts,
   getReceiptById,
   getReceiptsByClientId,

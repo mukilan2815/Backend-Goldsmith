@@ -1,4 +1,5 @@
 const Receipt = require("../../models/receiptModel");
+const Client = require("../../models/clientModel");
 const asyncHandler = require("express-async-handler");
 
 const createReceipt = asyncHandler(async (req, res) => {
@@ -11,6 +12,7 @@ const createReceipt = asyncHandler(async (req, res) => {
     overallWeight,
     issueDate,
     tableData,
+    receivedData,
     totals,
     voucherId,
   } = req.body;
@@ -33,102 +35,157 @@ const createReceipt = asyncHandler(async (req, res) => {
     });
   }
 
+  // Validate items
+  let itemErrors = [];
+  if (!Array.isArray(tableData) {
+    itemErrors.push({
+      message: "Items must be an array",
+      type: "invalid_type"
+    });
+  } else if (tableData.length === 0) {
+    itemErrors.push({
+      message: "At least one item is required",
+      type: "too_small"
+    });
+  } else {
+    tableData.forEach((item, idx) => {
+      const errors = {};
+      if (!item.itemName || item.itemName.trim() === "") {
+        errors.itemName = {
+          message: "Item name is required",
+          type: "too_small"
+        };
+      }
+      if (!(parseFloat(item.grossWt) > 0)) {
+        errors.grossWt = {
+          message: "Gross weight is required and must be positive",
+          type: "too_small"
+        };
+      }
+      if (parseFloat(item.stoneWt) > parseFloat(item.grossWt)) {
+        errors.stoneWt = {
+          message: "Stone weight cannot exceed gross weight",
+          type: "too_big"
+        };
+      }
+      if (Object.keys(errors).length > 0) {
+        itemErrors.push({
+          index: idx,
+          ...errors
+        });
+      }
+    });
+  }
+
+  if (itemErrors.length > 0) {
+    return res.status(400).json({
+      success: false,
+      errors: {
+        items: itemErrors
+      }
+    });
+  }
+
   try {
-    // Process items data to ensure numeric values are properly parsed
-    // Map from frontend field names to database field names
-    const processedItems = Array.isArray(tableData)
-      ? tableData.map((item) => {
-          // Get values from frontend field names
-          const grossWeight = parseFloat(item.grossWeight) || 0;
-          const stoneWeight = parseFloat(item.stoneWeight) || 0;
-          const netWeight = parseFloat(item.netWeight) || 0;
-          const finalWeight = parseFloat(item.finalWeight) || 0;
-          const stoneAmount = parseFloat(item.stoneAmount) || 0;
+    // Get client's current balance
+    const client = await Client.findById(clientId);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: "Client not found"
+      });
+    }
 
-          // Log the values for debugging
-          console.log("Processing item:", {
-            itemName: item.itemName,
-            grossWeight,
-            stoneWeight,
-            netWeight,
-            finalWeight,
-            stoneAmount,
-          });
+    const previousBalance = client.balance || 0;
 
-          return {
-            itemName: item.itemName || "",
-            // Store using database field names
-            grossWt: grossWeight,
-            stoneWt: stoneWeight,
-            netWt: netWeight,
-            finalWt: finalWeight,
-            stoneAmt: stoneAmount,
-            // Preserve any other fields
-            ...(item.tag && { tag: item.tag }),
-            ...(item.meltingPercent && {
-              meltingTouch: parseFloat(item.meltingPercent) || 0,
-            }),
-            ...(item.amount && {
-              totalInvoiceAmount: parseFloat(item.amount) || 0,
-            }),
-          };
-        })
-      : [];
+    // Process items data
+    const processedItems = tableData.map((item) => ({
+      itemName: item.itemName || "",
+      tag: item.tag || "",
+      grossWt: parseFloat(item.grossWt) || 0,
+      stoneWt: parseFloat(item.stoneWt) || 0,
+      meltingTouch: parseFloat(item.meltingTouch) || 0,
+      netWt: parseFloat(item.netWt) || 0,
+      finalWt: parseFloat(item.finalWt) || 0,
+      stoneAmt: parseFloat(item.stoneAmt) || 0,
+    }));
 
-    // Process totals with correct field mapping
-    const processedTotals = {
-      // Map from frontend totals to database field names
-      grossWt: parseFloat(totals?.grossWt) || 0,
-      stoneWt: parseFloat(totals?.stoneWt) || 0,
-      netWt: parseFloat(totals?.netWt) || 0,
-      finalWt: parseFloat(totals?.finalWt) || 0,
-      stoneAmt: parseFloat(totals?.stoneAmt) || 0,
-    };
+    // Process received items
+    const processedReceivedItems = (receivedData || []).map((item) => ({
+      receivedGold: parseFloat(item.receivedGold) || 0,
+      melting: parseFloat(item.melting) || 0,
+      finalWt: parseFloat(item.finalWt) || 0,
+    }));
 
-    // Create receipt data object with proper numeric parsing
+    // Calculate totals
+    const calculatedTotals = processedItems.reduce(
+      (acc, item) => {
+        const netWt = item.grossWt - item.stoneWt;
+        const finalWt = (netWt * item.meltingTouch) / 100;
+        
+        return {
+          grossWt: acc.grossWt + item.grossWt,
+          stoneWt: acc.stoneWt + item.stoneWt,
+          netWt: acc.netWt + netWt,
+          finalWt: acc.finalWt + finalWt,
+          stoneAmt: acc.stoneAmt + (item.stoneAmt || 0),
+        };
+      },
+      { grossWt: 0, stoneWt: 0, netWt: 0, finalWt: 0, stoneAmt: 0 }
+    );
+
+    // Calculate received totals
+    const receivedTotals = processedReceivedItems.reduce(
+      (acc, item) => ({
+        finalWt: acc.finalWt + ((item.receivedGold * item.melting) / 100)
+      }),
+      { finalWt: 0 }
+    );
+
+    // Calculate balance
+    const balance = calculatedTotals.finalWt - receivedTotals.finalWt;
+    const newBalance = previousBalance + balance;
+
+    // Create receipt data
     const receiptData = {
       clientId,
       clientInfo: {
-        clientName: clientName || "",
+        clientName,
         shopName: shopName || "",
         phoneNumber: phoneNumber || "",
+        metalType,
       },
       metalType,
-      overallWeight: parseFloat(overallWeight) || 0,
       issueDate: new Date(issueDate),
       voucherId,
-      items: processedItems,
-      totals: processedTotals,
-      // Preserve any other fields from the request
-      ...(req.body.paymentStatus && { paymentStatus: req.body.paymentStatus }),
-      ...(req.body.isCompleted !== undefined && {
-        isCompleted: req.body.isCompleted,
-      }),
-      ...(req.body.balanceDue !== undefined && {
-        balanceDue: parseFloat(req.body.balanceDue) || 0,
-      }),
-      ...(req.body.totalPaidAmount !== undefined && {
-        totalPaidAmount: parseFloat(req.body.totalPaidAmount) || 0,
-      }),
-      ...(req.body.payments && { payments: req.body.payments }),
+      givenItems: processedItems,
+      receivedItems: processedReceivedItems,
+      totals: calculatedTotals,
+      previousBalance,
+      balance,
+      newBalance,
+      isCompleted: balance <= 0, // Mark as completed if balance is settled
     };
 
-    // Debug log to verify data before saving
-    console.log(
-      "Creating receipt with data:",
-      JSON.stringify(receiptData, null, 2)
-    );
-
+    // Create receipt
     const receipt = await Receipt.create(receiptData);
+
+    // Update client balance
+    client.balance = newBalance;
+    await client.save();
 
     res.status(201).json({
       success: true,
-      voucherId: receipt.voucherId,
-      _id: receipt._id,
+      data: {
+        _id: receipt._id,
+        voucherId: receipt.voucherId,
+        balance: receipt.balance,
+        newBalance,
+      },
     });
   } catch (error) {
     console.error("Error creating receipt:", error);
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       message: error.message || "Failed to create receipt",
     });

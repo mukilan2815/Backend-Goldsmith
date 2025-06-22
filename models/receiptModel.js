@@ -4,14 +4,11 @@ const receiptItemSchema = new mongoose.Schema(
   {
     itemName: {
       type: String,
-      required: [true, "Item name is required."],
       trim: true,
     },
-    description: { type: String, trim: true, default: "" },
     tag: { type: String, trim: true, default: "" },
     grossWt: {
       type: Number,
-      required: [true, "Gross weight is required."],
       default: 0,
     },
     stoneWt: { type: Number, default: 0 },
@@ -24,36 +21,17 @@ const receiptItemSchema = new mongoose.Schema(
     },
     finalWt: { type: Number, default: 0 },
     stoneAmt: { type: Number, default: 0 },
-    totalInvoiceAmount: { type: Number, default: 0 },
   },
   { _id: false }
 );
 
-const paymentSchema = new mongoose.Schema(
+const receivedItemSchema = new mongoose.Schema(
   {
-    paymentDate: { type: Date, default: Date.now },
-    amountPaid: {
-      type: Number,
-      required: [true, "Amount paid is required"],
-      min: [0.01, "Payment amount must be positive"],
-    },
-    paymentMethod: {
-      type: String,
-      required: [true, "Payment method is required"],
-      enum: [
-        "Cash",
-        "Bank Transfer",
-        "Credit Card",
-        "Debit Card",
-        "Cheque",
-        "Online Payment",
-        "Other",
-      ],
-    },
-    referenceNumber: { type: String, trim: true },
-    notes: { type: String, trim: true },
+    receivedGold: { type: Number, default: 0 },
+    melting: { type: Number, default: 0 },
+    finalWt: { type: Number, default: 0 },
   },
-  { _id: true }
+  { _id: false }
 );
 
 const receiptSchema = mongoose.Schema(
@@ -79,26 +57,19 @@ const receiptSchema = mongoose.Schema(
       trim: true,
     },
     issueDate: { type: Date, required: true, default: Date.now },
-    deliveryDate: { type: Date },
     voucherId: { type: String, trim: true, unique: true },
-    items: [receiptItemSchema],
+    givenItems: [receiptItemSchema],
+    receivedItems: [receivedItemSchema],
     totals: {
       grossWt: { type: Number, default: 0 },
       stoneWt: { type: Number, default: 0 },
       netWt: { type: Number, default: 0 },
       finalWt: { type: Number, default: 0 },
       stoneAmt: { type: Number, default: 0 },
-      totalInvoiceAmount: { type: Number, default: 0 },
     },
-    payments: [paymentSchema],
-    totalPaidAmount: { type: Number, default: 0 },
-    balanceDue: { type: Number, default: 0 },
-    paymentStatus: {
-      type: String,
-      enum: ["Pending", "Partially Paid", "Paid", "Overdue", "Cancelled"],
-      default: "Pending",
-    },
-    notes: { type: String, trim: true },
+    balance: { type: Number, default: 0 }, // This receipt's balance
+    previousBalance: { type: Number, default: 0 }, // Client's balance before this receipt
+    newBalance: { type: Number, default: 0 }, // Client's new balance after this receipt
     isCompleted: { type: Boolean, default: false },
   },
   {
@@ -106,66 +77,76 @@ const receiptSchema = mongoose.Schema(
   }
 );
 
-receiptSchema.pre("save", function (next) {
-  let totalGrossWt = 0;
-  let totalStoneWt = 0;
-  let totalNetWt = 0;
-  let totalFinalWt = 0;
-  let totalStoneAmt = 0;
-  let totalInvoiceAmount = 0;
-  let totalMeltingTouch = 0;
+// Pre-save hook to calculate totals and update client balance
+receiptSchema.pre("save", async function (next) {
+  // Calculate given items totals
+  const givenTotals = this.givenItems.reduce(
+    (acc, item) => {
+      const netWt = item.grossWt - item.stoneWt;
+      const finalWt = (netWt * item.meltingTouch) / 100;
 
-  this.items.forEach((item) => {
-    // Preserve manually entered values
-    if (typeof item.netWt === "undefined" || item.netWt === null) {
-      item.netWt = parseFloat((item.grossWt || 0) - (item.stoneWt || 0));
-    }
-
-    if (typeof item.finalWt === "undefined" || item.finalWt === null) {
-      item.finalWt = parseFloat(
-        ((item.netWt * (item.meltingTouch || 0)) / 100).toFixed(3)
-      );
-    }
-
-    // Accumulate totals
-    totalGrossWt += item.grossWt || 0;
-    totalStoneWt += item.stoneWt || 0;
-    totalNetWt += item.netWt || 0;
-    totalFinalWt += item.finalWt || 0;
-    totalStoneAmt += item.stoneAmt || 0;
-    totalInvoiceAmount += item.totalInvoiceAmount || 0;
-    totalMeltingTouch += item.meltingTouch || 0;
-  });
-
-  this.totals = {
-    grossWt: parseFloat(totalGrossWt.toFixed(3)),
-    stoneWt: parseFloat(totalStoneWt.toFixed(3)),
-    netWt: parseFloat(totalNetWt.toFixed(3)),
-    finalWt: parseFloat(totalFinalWt.toFixed(3)),
-    stoneAmt: parseFloat(totalStoneAmt.toFixed(2)),
-    meltingTouch: parseFloat(totalMeltingTouch.toFixed(2)), // Added this line
-    totalInvoiceAmount: parseFloat(totalInvoiceAmount.toFixed(2)),
-  };
-
-  let totalPaid = 0;
-  this.payments.forEach((payment) => {
-    totalPaid += payment.amountPaid;
-  });
-
-  this.totalPaidAmount = parseFloat(totalPaid.toFixed(2));
-  this.balanceDue = parseFloat(
-    (this.totals.totalInvoiceAmount - this.totalPaidAmount).toFixed(2)
+      return {
+        grossWt: acc.grossWt + item.grossWt,
+        stoneWt: acc.stoneWt + item.stoneWt,
+        netWt: acc.netWt + netWt,
+        finalWt: acc.finalWt + finalWt,
+        stoneAmt: acc.stoneAmt + (item.stoneAmt || 0),
+      };
+    },
+    { grossWt: 0, stoneWt: 0, netWt: 0, finalWt: 0, stoneAmt: 0 }
   );
 
-  if (this.balanceDue <= 0) {
-    this.paymentStatus = "Paid";
-  } else if (this.totalPaidAmount > 0) {
-    this.paymentStatus = "Partially Paid";
-  } else {
-    this.paymentStatus = "Pending";
-  }
+  // Calculate received items totals
+  const receivedTotals = this.receivedItems.reduce(
+    (acc, item) => {
+      const finalWt = (item.receivedGold * item.melting) / 100;
+      return {
+        finalWt: acc.finalWt + finalWt,
+      };
+    },
+    { finalWt: 0 }
+  );
+
+  // Get client's current balance
+  const Client = mongoose.model("Client");
+  const client = await Client.findById(this.clientId);
+
+  // Store previous balance
+  this.previousBalance = client.balance || 0;
+
+  // Calculate this receipt's balance
+  this.balance = parseFloat(
+    (givenTotals.finalWt - receivedTotals.finalWt).toFixed(3)
+  );
+
+  // Calculate new client balance
+  this.newBalance = parseFloat((client.balance + this.balance).toFixed(3));
+
+  // Update client's balance
+  client.balance = this.newBalance;
+  await client.save();
+
+  // Update receipt totals
+  this.totals = {
+    grossWt: parseFloat(givenTotals.grossWt.toFixed(3)),
+    stoneWt: parseFloat(givenTotals.stoneWt.toFixed(3)),
+    netWt: parseFloat(givenTotals.netWt.toFixed(3)),
+    finalWt: parseFloat(givenTotals.finalWt.toFixed(3)),
+    stoneAmt: parseFloat(givenTotals.stoneAmt.toFixed(2)),
+  };
 
   next();
+});
+
+// Post-remove hook to adjust client balance when receipt is deleted
+receiptSchema.post("remove", async function (doc) {
+  const Client = mongoose.model("Client");
+  const client = await Client.findById(doc.clientId);
+
+  if (client) {
+    client.balance = parseFloat((client.balance - doc.balance).toFixed(3));
+    await client.save();
+  }
 });
 
 const Receipt = mongoose.model("Receipt", receiptSchema);

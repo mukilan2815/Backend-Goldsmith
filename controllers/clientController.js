@@ -98,52 +98,101 @@ const createClient = asyncHandler(async (req, res) => {
 // @desc    Update client
 // @route   PUT /api/clients/:id
 // @access  Public
+// @desc    Update client
+// @route   PUT /api/clients/:id
+// @access  Public
 const updateClient = asyncHandler(async (req, res) => {
-  const { shopName, clientName, phoneNumber, address, email, active } =
+  const { shopName, clientName, phoneNumber, address, email, active, balance } =
     req.body;
 
   const client = await Client.findById(req.params.id);
 
-  if (client) {
-    // Check if another client has this phone number
-    if (phoneNumber !== client.phoneNumber) {
-      const phoneExists = await Client.findOne({ phoneNumber });
-      if (phoneExists) {
-        res.status(400);
-        throw new Error("Phone number already used by another client");
-      }
-    }
-
-    client.shopName = shopName || client.shopName;
-    client.clientName = clientName || client.clientName;
-    client.phoneNumber = phoneNumber || client.phoneNumber;
-    client.address = address || client.address;
-    client.email = email !== undefined ? email : client.email;
-    client.active = active !== undefined ? active : client.active;
-    client.balance = req.body.balance || client.balance;
-
-    const updatedClient = await client.save();
-
-    // Update client info in all receipts
-    if (shopName || clientName || phoneNumber) {
-      await Receipt.updateMany(
-        { clientId: client._id },
-        {
-          $set: {
-            "clientInfo.shopName": updatedClient.shopName,
-            "clientInfo.clientName": updatedClient.clientName,
-            "clientInfo.phoneNumber": updatedClient.phoneNumber,
-            "clientInfo.balance": updatedClient.balance,
-          },
-        }
-      );
-    }
-
-    res.json(updatedClient);
-  } else {
+  if (!client) {
     res.status(404);
     throw new Error("Client not found");
   }
+
+  // Check if another client has this phone number
+  if (phoneNumber && phoneNumber !== client.phoneNumber) {
+    const phoneExists = await Client.findOne({ phoneNumber });
+    if (phoneExists) {
+      res.status(400);
+      throw new Error("Phone number already used by another client");
+    }
+  }
+
+  // Calculate balance difference if balance is being updated
+  const balanceChanged =
+    typeof balance !== "undefined" && balance !== client.balance;
+  const balanceDifference = balanceChanged
+    ? parseFloat(balance) - parseFloat(client.balance)
+    : 0;
+
+  // Update client fields
+  client.shopName = shopName || client.shopName;
+  client.clientName = clientName || client.clientName;
+  client.phoneNumber = phoneNumber || client.phoneNumber;
+  client.address = address || client.address;
+  client.email = email !== undefined ? email : client.email;
+  client.active = active !== undefined ? active : client.active;
+
+  // Only update balance if explicitly provided in request
+  if (typeof balance !== "undefined") {
+    client.balance = parseFloat(balance);
+  }
+
+  // Add to balance history if balance changed
+  if (balanceChanged) {
+    client.balanceHistory = client.balanceHistory || [];
+    client.balanceHistory.push({
+      date: new Date(),
+      amount: balanceDifference,
+      description: req.body.balanceDescription || "Manual balance adjustment",
+      type: balanceDifference >= 0 ? "credit" : "debit",
+      receiptId: null, // Manual adjustment, not tied to a receipt
+      adjustedBy: req.user?._id, // Track who made the change if authenticated
+    });
+  }
+
+  const updatedClient = await client.save();
+
+  // Update client info in all receipts if basic info changed
+  const clientInfoChanged = shopName || clientName || phoneNumber;
+  if (clientInfoChanged) {
+    await Receipt.updateMany(
+      { clientId: client._id },
+      {
+        $set: {
+          "clientInfo.shopName": updatedClient.shopName,
+          "clientInfo.clientName": updatedClient.clientName,
+          "clientInfo.phoneNumber": updatedClient.phoneNumber,
+        },
+      }
+    );
+  }
+
+  // If balance was updated, also update the latest receipt's balance reference
+  if (balanceChanged) {
+    await Receipt.findOneAndUpdate(
+      { clientId: client._id },
+      { $set: { "clientInfo.balance": updatedClient.balance } },
+      { sort: { createdAt: -1 } } // Update the most recent receipt
+    );
+  }
+
+  res.json({
+    _id: updatedClient._id,
+    shopName: updatedClient.shopName,
+    clientName: updatedClient.clientName,
+    phoneNumber: updatedClient.phoneNumber,
+    address: updatedClient.address,
+    email: updatedClient.email,
+    active: updatedClient.active,
+    balance: updatedClient.balance,
+    balanceHistory: updatedClient.balanceHistory,
+    metalType: updatedClient.metalType,
+    updatedAt: updatedClient.updatedAt,
+  });
 });
 
 // @desc    Delete client
