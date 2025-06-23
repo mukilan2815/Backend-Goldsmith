@@ -243,7 +243,7 @@ const getVoucherId = async (req, res) => {
 
     // Find the latest voucher for this month/year
     const latestVoucher = await Receipt.findOne({
-      voucherId: new RegExp(`^CL-${month}${year}-`),
+      voucherId: new RegExp(`^SH-${month}${year}-`),
     }).sort("-voucherId");
 
     let nextNumber = 1;
@@ -252,7 +252,7 @@ const getVoucherId = async (req, res) => {
       nextNumber = lastNumber + 1;
     }
 
-    const voucherId = `CL-${month}${year}-${nextNumber
+    const voucherId = `SH-${month}${year}-${nextNumber
       .toString()
       .padStart(4, "0")}`;
 
