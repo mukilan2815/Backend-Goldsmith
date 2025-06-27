@@ -30,6 +30,10 @@ const givenItemSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  date: {
+    type: String,
+    default: () => new Date().toISOString().split("T")[0],
+  },
 });
 
 const receivedItemSchema = mongoose.Schema({
@@ -59,6 +63,10 @@ const receivedItemSchema = mongoose.Schema({
     // Consistent with given items
     type: String,
     required: true,
+  },
+  date: {
+    type: String,
+    default: () => new Date().toISOString().split("T")[0],
   },
 });
 

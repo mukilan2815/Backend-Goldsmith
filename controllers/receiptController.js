@@ -128,12 +128,34 @@ const createReceipt = async (req, res) => {
       (req.body.receivedItems && [...req.body.receivedItems]) ||
       [];
 
+    // Compute totals for balance calculation
+    let totalFinal = 0;
+    let receivedFinal = 0;
+    givenItems.forEach((it) => {
+      totalFinal += parseFloat(it.finalWt?.toString() || "0");
+    });
+    receivedItems.forEach((r) => {
+      receivedFinal += parseFloat(r.finalWt?.toString() || "0");
+    });
+
+    const balanceChange = parseFloat((totalFinal - receivedFinal).toFixed(3));
+    const newClientBalance = parseFloat(
+      (client.balance + balanceChange).toFixed(3)
+    );
+
+    // Optionally update client balance here if you want atomicity
+    client.balance = newClientBalance;
+    await client.save();
+
     const receiptData = {
       clientId: req.body.clientId,
       clientInfo: req.body.clientInfo,
       metalType: req.body.metalType,
       issueDate: new Date(req.body.issueDate),
       voucherId: req.body.voucherId,
+      status:
+        req.body.status ||
+        (receivedItems.length > 0 ? "complete" : "incomplete"),
       givenItems,
       receivedItems,
       previousBalance: client.balance,

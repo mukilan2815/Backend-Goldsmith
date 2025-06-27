@@ -21,6 +21,10 @@ const receiptItemSchema = new mongoose.Schema(
     },
     finalWt: { type: Number, default: 0 },
     stoneAmt: { type: Number, default: 0 },
+    date: {
+      type: String,
+      default: () => new Date().toISOString().split("T")[0],
+    },
   },
   { _id: false }
 );
@@ -71,6 +75,11 @@ const receiptSchema = mongoose.Schema(
     previousBalance: { type: Number, default: 0 }, // Client's balance before this receipt
     newBalance: { type: Number, default: 0 }, // Client's new balance after this receipt
     isCompleted: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ["incomplete", "complete", "cancelled"],
+      default: "incomplete",
+    },
   },
   {
     timestamps: true,
