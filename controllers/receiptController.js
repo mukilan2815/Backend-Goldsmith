@@ -259,24 +259,20 @@ const deleteReceipt = async (req, res) => {
 // @access  Private
 const getVoucherId = async (req, res) => {
   try {
-    const date = new Date();
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear().toString().slice(-2);
-
-    // Find the latest voucher for this month/year
-    const latestVoucher = await Receipt.findOne({
-      voucherId: new RegExp(`^SH-${month}${year}-`),
-    }).sort("-voucherId");
+    // Find the latest voucher by sorting voucherId descending
+    const latestVoucher = await Receipt.findOne({})
+      .sort({ voucherId: -1 })
+      .lean();
 
     let nextNumber = 1;
-    if (latestVoucher) {
-      const lastNumber = parseInt(latestVoucher.voucherId.split("-")[2]);
-      nextNumber = lastNumber + 1;
+    if (latestVoucher && latestVoucher.voucherId) {
+      const match = latestVoucher.voucherId.match(/SH-(\d+)/);
+      if (match && match[1]) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
     }
 
-    const voucherId = `SH-${month}${year}-${nextNumber
-      .toString()
-      .padStart(4, "0")}`;
+    const voucherId = `SH-${nextNumber.toString().padStart(3, "0")}`;
 
     res.status(200).json({
       success: true,
