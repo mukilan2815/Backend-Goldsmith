@@ -159,6 +159,7 @@ const createReceipt = async (req, res) => {
       givenItems,
       receivedItems,
       previousBalance: client.balance,
+      finalWtBalanceTag: req.body.finalWtBalanceTag || ""
     };
 
     const receipt = await Receipt.create(receiptData);
@@ -192,6 +193,11 @@ const updateReceipt = async (req, res) => {
       givenItems: req.body.items || req.body.givenItems || req.body.tableData,
       receivedItems: req.body.receivedData || req.body.receivedItems,
     };
+    
+    // Include finalWtBalanceTag in update if provided
+    if (req.body.finalWtBalanceTag !== undefined) {
+      updateData.finalWtBalanceTag = req.body.finalWtBalanceTag;
+    }
 
     const updatedReceipt = await Receipt.findByIdAndUpdate(
       req.params.id,

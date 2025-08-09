@@ -80,6 +80,11 @@ const receiptSchema = mongoose.Schema(
       enum: ["incomplete", "complete", "cancelled"],
       default: "incomplete",
     },
+    finalWtBalanceTag: {
+      type: String,
+      trim: true,
+      default: ""
+    },
   },
   {
     timestamps: true,
