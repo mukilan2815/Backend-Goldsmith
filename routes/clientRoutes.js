@@ -17,9 +17,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 const routeHandler = isProduction ? protect : (req, res, next) => next();
 
 // Public routes
-router.route('/').get(getClients).post(createClient);
 router.route('/search').get(searchClients);
-router.route('/:id').get(getClientById).put(updateClient).delete(deleteClient);
 router.route('/stats').get(routeHandler, getClientStats);
+router.route('/').get(getClients).post(createClient);
+router.route('/:id').get(getClientById).put(updateClient).delete(deleteClient);
 
 module.exports = router;
